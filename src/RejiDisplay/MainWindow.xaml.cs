@@ -50,6 +50,7 @@ namespace RejiDisplay
 
             _displayService.DisplayTopologyChanged += OnDisplayTopologyChanged;
             _captureService.FrameArrived += OnCaptureFrameArrived;
+            _captureService.MasterFrameArrived += OnMasterFrameArrived;
             _captureService.CaptureError += OnCaptureError;
 
             Loaded += MainWindow_Loaded;
@@ -183,65 +184,65 @@ namespace RejiDisplay
             });
         }
 
+        private void OnMasterFrameArrived(object? sender, FrameArrivedEventArgs e)
+        {
+            if (_outputManager.IsMasterOutputActive)
+            {
+                if (e.FrameId <= 5 && e.FrameId > 0)
+                {
+                    Logger.Log($"[FRAME_TRACE] Stage 7 (OutputManager.UpdateMiddleCaptureFrame Called 60FPS): FrameId={e.FrameId}");
+                }
+                _outputManager.UpdateMiddleCaptureFrame(e.Frame, e.FrameId);
+            }
+        }
+
         private void OnCaptureFrameArrived(object? sender, FrameArrivedEventArgs e)
         {
-            Dispatcher.Invoke(() =>
+            if (ImgMiddleMasterPreview != null)
             {
-                if (ImgMiddleMasterPreview != null)
+                ImgMiddleMasterPreview.Source = e.Frame;
+                if (e.FrameId <= 5 && e.FrameId > 0)
                 {
-                    ImgMiddleMasterPreview.Source = e.Frame;
-                    if (e.FrameId <= 5 && e.FrameId > 0)
-                    {
-                        Logger.Log($"[FRAME_TRACE] Stage 8 (Control Preview Updated): FrameId={e.FrameId} | ImageWidth={e.Frame?.PixelWidth}x{e.Frame?.PixelHeight} | Mode={e.CaptureMode}");
-                    }
+                    Logger.Log($"[FRAME_TRACE] Stage 8 (Control Preview Updated 30FPS): FrameId={e.FrameId} | ImageWidth={e.Frame?.PixelWidth}x{e.Frame?.PixelHeight} | Mode={e.CaptureMode}");
                 }
+            }
 
-                string fpsStr = e.Fps > 0 ? $"{e.Fps:F1}" : "--";
-                if (TxtCaptureFps != null) TxtCaptureFps.Text = fpsStr;
+            string fpsStr = e.Fps > 0 ? $"{e.Fps:F1}" : "--";
+            if (TxtCaptureFps != null) TxtCaptureFps.Text = fpsStr;
 
-                if (TxtHeaderCapture != null && DotHeaderCapture != null)
+            if (TxtHeaderCapture != null && DotHeaderCapture != null)
+            {
+                if (e.CaptureMode.Contains("BAŞLATILIYOR"))
                 {
-                    if (e.CaptureMode.Contains("BAŞLATILIYOR"))
-                    {
-                        TxtHeaderCapture.Text = "🟡 BAŞLATILIYOR";
-                        TxtHeaderCapture.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FBBF24"));
-                        DotHeaderCapture.Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FBBF24"));
-                    }
-                    else if (e.CaptureMode.Contains("WGC_GPU"))
-                    {
-                        TxtHeaderCapture.Text = "🟢 WGC GPU";
-                        TxtHeaderCapture.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#10B981"));
-                        DotHeaderCapture.Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#10B981"));
-                    }
-                    else if (e.CaptureMode.Contains("DXGI_GPU"))
-                    {
-                        TxtHeaderCapture.Text = "🟢 DXGI GPU";
-                        TxtHeaderCapture.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#10B981"));
-                        DotHeaderCapture.Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#10B981"));
-                    }
-                    else if (e.CaptureMode.Contains("WIN32_GDI"))
-                    {
-                        TxtHeaderCapture.Text = "⚠️ WIN32_GDI";
-                        TxtHeaderCapture.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#F59E0B"));
-                        DotHeaderCapture.Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#F59E0B"));
-                    }
-                    else
-                    {
-                        TxtHeaderCapture.Text = "❌ KARE YOK";
-                        TxtHeaderCapture.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#EF4444"));
-                        DotHeaderCapture.Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#EF4444"));
-                    }
+                    TxtHeaderCapture.Text = "🟡 BAŞLATILIYOR";
+                    TxtHeaderCapture.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FBBF24"));
+                    DotHeaderCapture.Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FBBF24"));
                 }
-
-                if (_outputManager.IsMasterOutputActive)
+                else if (e.CaptureMode.Contains("WGC_GPU"))
                 {
-                    if (e.FrameId <= 5 && e.FrameId > 0)
-                    {
-                        Logger.Log($"[FRAME_TRACE] Stage 7 (OutputManager.UpdateMiddleCaptureFrame Called): FrameId={e.FrameId}");
-                    }
-                    _outputManager.UpdateMiddleCaptureFrame(e.Frame, e.FrameId);
+                    TxtHeaderCapture.Text = "🟢 WGC GPU";
+                    TxtHeaderCapture.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#10B981"));
+                    DotHeaderCapture.Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#10B981"));
                 }
-            });
+                else if (e.CaptureMode.Contains("DXGI_GPU"))
+                {
+                    TxtHeaderCapture.Text = "🟢 DXGI GPU";
+                    TxtHeaderCapture.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#10B981"));
+                    DotHeaderCapture.Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#10B981"));
+                }
+                else if (e.CaptureMode.Contains("WIN32_GDI"))
+                {
+                    TxtHeaderCapture.Text = "⚠️ WIN32_GDI";
+                    TxtHeaderCapture.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#F59E0B"));
+                    DotHeaderCapture.Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#F59E0B"));
+                }
+                else
+                {
+                    TxtHeaderCapture.Text = "❌ KARE YOK";
+                    TxtHeaderCapture.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#EF4444"));
+                    DotHeaderCapture.Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#EF4444"));
+                }
+            }
         }
 
         private void OnCaptureError(object? sender, string err)

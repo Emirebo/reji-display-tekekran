@@ -459,27 +459,35 @@ namespace RejiDisplay.Services
             public double ReadbackMs;
         }
 
+        private int _isConvertingFrame = 0;
+
         public async Task<CaptureFrameResult> CaptureFrameAsync()
         {
             var result = new CaptureFrameResult { Bitmap = _currentBitmap };
 
             if (!IsInitialized) return result;
 
-            Direct3D11CaptureFrame? frame = null;
-            lock (_frameLock)
+            if (Interlocked.CompareExchange(ref _isConvertingFrame, 1, 0) != 0)
             {
-                frame = _latestFrame;
-                _latestFrame = null;
+                return result;
             }
 
-            if (frame == null) return result;
-
-            result.FrameChanged = true;
-            long frameId = _globalFrameId;
-            var acqSw = Stopwatch.StartNew();
+            Direct3D11CaptureFrame? frame = null;
 
             try
             {
+                lock (_frameLock)
+                {
+                    frame = _latestFrame;
+                    _latestFrame = null;
+                }
+
+                if (frame == null) return result;
+
+                result.FrameChanged = true;
+                long frameId = _globalFrameId;
+                var acqSw = Stopwatch.StartNew();
+
                 using var surface = frame.Surface;
                 if (surface == null) return result;
 
@@ -567,6 +575,7 @@ namespace RejiDisplay.Services
             finally
             {
                 frame?.Dispose();
+                Interlocked.Exchange(ref _isConvertingFrame, 0);
             }
         }
 

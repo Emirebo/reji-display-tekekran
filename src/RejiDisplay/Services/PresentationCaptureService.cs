@@ -42,6 +42,7 @@ namespace RejiDisplay.Services
     public class PresentationCaptureService : IDisposable
     {
         public event EventHandler<FrameArrivedEventArgs>? FrameArrived;
+        public event EventHandler<FrameArrivedEventArgs>? MasterFrameArrived;
         public event EventHandler<string>? CaptureError;
 
         private CancellationTokenSource? _cts;
@@ -68,7 +69,11 @@ namespace RejiDisplay.Services
         public double FrameLatencyMs { get; private set; }
         public double AverageFrameLatencyMs { get; private set; }
         public double P95FrameLatencyMs { get; private set; }
-        public double DispatcherQueueLatencyMs { get; private set; }
+        public double AvgTaskDelayRequestedMs { get; private set; }
+        public double AvgTaskDelayActualMs { get; private set; }
+        public double AvgDelayOvershootMs { get; private set; }
+        public double P95DelayOvershootMs { get; private set; }
+        public double MaxDelayOvershootMs { get; private set; }
 
         public DiagnosticScenario ActiveScenario { get; set; } = DiagnosticScenario.ScenarioD_FullApp;
 
@@ -81,6 +86,9 @@ namespace RejiDisplay.Services
         private readonly Stopwatch _diagnosticLogStopwatch = new();
 
         private readonly List<double> _recentLatencies = new();
+        private readonly List<double> _recentRequestedDelays = new();
+        private readonly List<double> _recentActualDelays = new();
+        private readonly List<double> _recentDelayOvershoots = new();
 
         private IntPtr _persistentHdcSrc = IntPtr.Zero;
         private IntPtr _persistentHdcDest = IntPtr.Zero;
@@ -93,6 +101,7 @@ namespace RejiDisplay.Services
         private BitmapSource? _lastCapturedBitmap;
 
         private int _isDispatchingPreview = 0;
+        private int _isDispatchingMaster = 0;
         private long _lastPreviewTicks = 0;
 
         public void StartCapture(DisplayInfo targetDisplay)
@@ -339,7 +348,6 @@ namespace RejiDisplay.Services
                         CapturedHeight = frameBitmap.PixelHeight;
 
                         _frameCount++;
-                        _masterFrameCount++;
 
                         // --- FPS TELEMETRY METRICS ---
                         if (_fpsStopwatch.ElapsedMilliseconds >= 1000)
@@ -362,10 +370,54 @@ namespace RejiDisplay.Services
                         if (_diagnosticLogStopwatch.ElapsedMilliseconds >= 5000)
                         {
                             _diagnosticLogStopwatch.Restart();
-                            Logger.Log($"[DIAGNOSTICS] Scenario={ActiveScenario} | Backend={CurrentCaptureMode} | Display={display.DisplayLabel} ({CapturedWidth}x{CapturedHeight} @ {display.RefreshRate}Hz) | CapturedFPS={CurrentFps} | UniqueFPS={UniqueCapturedFps} | MasterFPS={MasterDeliveryFps} | PreviewFPS={PreviewDeliveryFps} | DroppedFrames={DroppedFrames} | RepeatedFrames={RepeatedFrames} | AvgLatency={AverageFrameLatencyMs}ms | P95Latency={P95FrameLatencyMs}ms | Acquisition={AcquisitionMs}ms | Readback={ReadbackMs}ms | DispatcherLatency={DispatcherQueueLatencyMs}ms");
+                            lock (_recentDelayOvershoots)
+                            {
+                                if (_recentDelayOvershoots.Count > 0)
+                                {
+                                    AvgTaskDelayRequestedMs = Math.Round(_recentRequestedDelays.Average(), 2);
+                                    AvgTaskDelayActualMs = Math.Round(_recentActualDelays.Average(), 2);
+                                    AvgDelayOvershootMs = Math.Round(_recentDelayOvershoots.Average(), 2);
+                                    MaxDelayOvershootMs = Math.Round(_recentDelayOvershoots.Max(), 2);
+                                    var sorted = _recentDelayOvershoots.OrderBy(x => x).ToList();
+                                    int p95Idx = (int)Math.Ceiling(0.95 * sorted.Count) - 1;
+                                    P95DelayOvershootMs = Math.Round(sorted[Math.Max(0, p95Idx)], 2);
+                                }
+                            }
+
+                            Logger.Log($"[DIAGNOSTICS] Scenario={ActiveScenario} | Backend={CurrentCaptureMode} | Display={display.DisplayLabel} ({CapturedWidth}x{CapturedHeight} @ {display.RefreshRate}Hz) | CapturedFPS={CurrentFps} | UniqueFPS={UniqueCapturedFps} | MasterDeliveredFPS={MasterDeliveryFps} | PreviewFPS={PreviewDeliveryFps} | DroppedFrames={DroppedFrames} | RepeatedFrames={RepeatedFrames} | AvgLatency={AverageFrameLatencyMs}ms | P95Latency={P95FrameLatencyMs}ms | Acquisition={AcquisitionMs}ms | Readback={ReadbackMs}ms | DelayReq={AvgTaskDelayRequestedMs}ms | DelayAct={AvgTaskDelayActualMs}ms | DelayOvershootAvg={AvgDelayOvershootMs}ms | DelayOvershootP95={P95DelayOvershootMs}ms | DelayOvershootMax={MaxDelayOvershootMs}ms");
                         }
 
-                        // --- DECOUPLED OPERATOR PREVIEW DELIVERY (Max 30 FPS, non-blocking) ---
+                        // --- DECOUPLED MASTER OUTPUT DELIVERY (60 FPS Target, non-blocking Latest-Frame-Wins) ---
+                        if (Interlocked.CompareExchange(ref _isDispatchingMaster, 1, 0) == 0)
+                        {
+                            var masterBmp = frameBitmap;
+                            var masterFps = CurrentFps;
+                            var masterMode = CurrentCaptureMode;
+                            long currentFrameId = wgcEngine?.CurrentFrameId ?? _frameCount;
+
+                            var dispatcher = Application.Current?.Dispatcher;
+                            if (dispatcher != null)
+                            {
+                                _ = dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Render, new Action(() =>
+                                {
+                                    try
+                                    {
+                                        _masterFrameCount++;
+                                        MasterFrameArrived?.Invoke(this, new FrameArrivedEventArgs(currentFrameId, masterBmp, masterFps, masterMode));
+                                    }
+                                    finally
+                                    {
+                                        Interlocked.Exchange(ref _isDispatchingMaster, 0);
+                                    }
+                                }));
+                            }
+                            else
+                            {
+                                Interlocked.Exchange(ref _isDispatchingMaster, 0);
+                            }
+                        }
+
+                        // --- DECOUPLED OPERATOR PREVIEW DELIVERY (Max 30 FPS, non-blocking Latest-Frame-Wins) ---
                         long currentTicks = Stopwatch.GetTimestamp();
                         double msSinceLastPreview = (currentTicks - _lastPreviewTicks) * 1000.0 / Stopwatch.Frequency;
 
@@ -374,9 +426,9 @@ namespace RejiDisplay.Services
                             if (Interlocked.CompareExchange(ref _isDispatchingPreview, 1, 0) == 0)
                             {
                                 _lastPreviewTicks = currentTicks;
-                                var capturedBmp = frameBitmap;
-                                var capturedFps = CurrentFps;
-                                var capturedMode = CurrentCaptureMode;
+                                var previewBmp = frameBitmap;
+                                var previewFps = CurrentFps;
+                                var previewMode = CurrentCaptureMode;
                                 long currentFrameId = wgcEngine?.CurrentFrameId ?? _frameCount;
 
                                 var dispatcher = Application.Current?.Dispatcher;
@@ -384,7 +436,7 @@ namespace RejiDisplay.Services
                                 {
                                     if (currentFrameId <= 5)
                                     {
-                                        Logger.Log($"[FRAME_TRACE] Stage 7 (PresentationCaptureService Published Frame): FrameId={currentFrameId} | Mode={capturedMode} | Fps={capturedFps:F1} | ThreadId={Environment.CurrentManagedThreadId}");
+                                        Logger.Log($"[FRAME_TRACE] Stage 7 (PresentationCaptureService Published Preview Frame): FrameId={currentFrameId} | Mode={previewMode} | Fps={previewFps:F1} | ThreadId={Environment.CurrentManagedThreadId}");
                                     }
 
                                     _ = dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Render, new Action(() =>
@@ -392,7 +444,7 @@ namespace RejiDisplay.Services
                                         try
                                         {
                                             _previewFrameCount++;
-                                            FrameArrived?.Invoke(this, new FrameArrivedEventArgs(currentFrameId, capturedBmp, capturedFps, capturedMode));
+                                            FrameArrived?.Invoke(this, new FrameArrivedEventArgs(currentFrameId, previewBmp, previewFps, previewMode));
                                         }
                                         finally
                                         {
@@ -426,7 +478,25 @@ namespace RejiDisplay.Services
                     double remainingMs = (remainingTicks * 1000.0) / Stopwatch.Frequency;
                     if (remainingMs > 2.0)
                     {
-                        await Task.Delay((int)(remainingMs - 1.0), token);
+                        double requestedMs = remainingMs - 1.0;
+                        var delaySw = Stopwatch.StartNew();
+                        await Task.Delay((int)requestedMs, token);
+                        delaySw.Stop();
+                        double actualDelayMs = delaySw.Elapsed.TotalMilliseconds;
+                        double overshootMs = actualDelayMs - requestedMs;
+
+                        lock (_recentDelayOvershoots)
+                        {
+                            _recentRequestedDelays.Add(requestedMs);
+                            _recentActualDelays.Add(actualDelayMs);
+                            _recentDelayOvershoots.Add(overshootMs);
+                            if (_recentDelayOvershoots.Count > 100)
+                            {
+                                _recentRequestedDelays.RemoveAt(0);
+                                _recentActualDelays.RemoveAt(0);
+                                _recentDelayOvershoots.RemoveAt(0);
+                            }
+                        }
                     }
                     while ((frameTimer.ElapsedTicks - startTicks) < targetFrameTicks)
                     {

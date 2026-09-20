@@ -359,22 +359,90 @@ namespace RejiDisplay.Services
 
                         try
                         {
-                            IntPtr vtable = Marshal.ReadIntPtr(pDxgiAccess);
-                            IntPtr pGetInterface = Marshal.ReadIntPtr(vtable, 3 * IntPtr.Size);
-                            var getInterfaceFunc = Marshal.GetDelegateForFunctionPointer<GetInterfaceDelegate>(pGetInterface);
-
                             Guid iidTexture2D = IID_ID3D11Texture2D;
-                            int hrGet = getInterfaceFunc(pDxgiAccess, ref iidTexture2D, out pTexture2D);
-                            if (hrGet == 0 && pTexture2D != IntPtr.Zero)
+                            Guid iidResource = new Guid("dc8e6380-2d2b-4227-af69-9e4277442880");
+                            Guid iidDxgiSurface = new Guid("cafcb56c-6e3c-4b16-9250-4fe044ee6e56");
+
+                            // Method A: Direct QueryInterface on pDxgiAccess
+                            int hrA = Marshal.QueryInterface(pDxgiAccess, ref iidTexture2D, out pTexture2D);
+                            if (hrA == 0 && pTexture2D != IntPtr.Zero)
                             {
-                                if (frameId <= 5)
-                                {
-                                    Logger.Log($"[FRAME_TRACE] Stage 3c (GetInterface ID3D11Texture2D Succeeded): FrameId={frameId} | HRESULT=0x00000000 | pTexture2D=0x{pTexture2D.ToString("X")}");
-                                }
+                                if (frameId <= 5) Logger.Log($"[FRAME_TRACE] Stage 3c (Method A QueryInterface Succeeded): FrameId={frameId} | pTexture2D=0x{pTexture2D.ToString("X")}");
                             }
-                            else
+                            else if (frameId <= 5)
                             {
-                                Logger.Log($"[FRAME_TRACE] Stage 3c FAILED: GetInterface(ID3D11Texture2D) failed: HRESULT=0x{hrGet:X8} (FrameId={frameId})");
+                                Logger.Log($"[WGC_COM_TRACE] Method A QueryInterface(ID3D11Texture2D) HRESULT=0x{hrA:X8}");
+                            }
+
+                            // Method B, C, D: IDirect3DDxgiInterfaceAccess.GetInterface vtable slot 3
+                            if (pTexture2D == IntPtr.Zero)
+                            {
+                                IntPtr vtable = Marshal.ReadIntPtr(pDxgiAccess);
+                                IntPtr pGetInterface = Marshal.ReadIntPtr(vtable, 3 * IntPtr.Size);
+                                var getInterfaceFunc = Marshal.GetDelegateForFunctionPointer<GetInterfaceDelegate>(pGetInterface);
+
+                                // Method B: GetInterface(IID_ID3D11Texture2D)
+                                int hrB = getInterfaceFunc(pDxgiAccess, ref iidTexture2D, out pTexture2D);
+                                if (hrB == 0 && pTexture2D != IntPtr.Zero)
+                                {
+                                    if (frameId <= 5) Logger.Log($"[FRAME_TRACE] Stage 3c (Method B GetInterface ID3D11Texture2D Succeeded): FrameId={frameId} | pTexture2D=0x{pTexture2D.ToString("X")}");
+                                }
+                                else if (frameId <= 5)
+                                {
+                                    Logger.Log($"[WGC_COM_TRACE] Method B GetInterface(ID3D11Texture2D) HRESULT=0x{hrB:X8}");
+                                }
+
+                                // Method C: GetInterface(IID_ID3D11Resource)
+                                if (pTexture2D == IntPtr.Zero)
+                                {
+                                    IntPtr pRes = IntPtr.Zero;
+                                    int hrC = getInterfaceFunc(pDxgiAccess, ref iidResource, out pRes);
+                                    if (hrC == 0 && pRes != IntPtr.Zero)
+                                    {
+                                        try
+                                        {
+                                            int hrQ = Marshal.QueryInterface(pRes, ref iidTexture2D, out pTexture2D);
+                                            if (hrQ == 0 && pTexture2D != IntPtr.Zero && frameId <= 5)
+                                            {
+                                                Logger.Log($"[FRAME_TRACE] Stage 3c (Method C GetInterface ID3D11Resource Succeeded): FrameId={frameId} | pTexture2D=0x{pTexture2D.ToString("X")}");
+                                            }
+                                        }
+                                        finally
+                                        {
+                                            Marshal.Release(pRes);
+                                        }
+                                    }
+                                    else if (frameId <= 5)
+                                    {
+                                        Logger.Log($"[WGC_COM_TRACE] Method C GetInterface(ID3D11Resource) HRESULT=0x{hrC:X8}");
+                                    }
+                                }
+
+                                // Method D: GetInterface(IID_IDXGISurface)
+                                if (pTexture2D == IntPtr.Zero)
+                                {
+                                    IntPtr pDxgiSurf = IntPtr.Zero;
+                                    int hrD = getInterfaceFunc(pDxgiAccess, ref iidDxgiSurface, out pDxgiSurf);
+                                    if (hrD == 0 && pDxgiSurf != IntPtr.Zero)
+                                    {
+                                        try
+                                        {
+                                            int hrQ = Marshal.QueryInterface(pDxgiSurf, ref iidTexture2D, out pTexture2D);
+                                            if (hrQ == 0 && pTexture2D != IntPtr.Zero && frameId <= 5)
+                                            {
+                                                Logger.Log($"[FRAME_TRACE] Stage 3c (Method D GetInterface IDXGISurface Succeeded): FrameId={frameId} | pTexture2D=0x{pTexture2D.ToString("X")}");
+                                            }
+                                        }
+                                        finally
+                                        {
+                                            Marshal.Release(pDxgiSurf);
+                                        }
+                                    }
+                                    else if (frameId <= 5)
+                                    {
+                                        Logger.Log($"[WGC_COM_TRACE] Method D GetInterface(IDXGISurface) HRESULT=0x{hrD:X8}");
+                                    }
+                                }
                             }
                         }
                         finally

@@ -88,6 +88,7 @@ namespace RejiDisplay.Services
         private int _persistentWidth;
         private int _persistentHeight;
         private byte[]? _gdiPixelBuffer;
+        private BitmapSource? _lastCapturedBitmap;
 
         private int _isDispatchingPreview = 0;
         private long _lastPreviewTicks = 0;
@@ -262,6 +263,16 @@ namespace RejiDisplay.Services
                         frameAcqMs = gdiSw.Elapsed.TotalMilliseconds;
                         frameReadMs = 0;
                         frameChanged = true;
+                    }
+
+                    if (frameBitmap != null)
+                    {
+                        _lastCapturedBitmap = frameBitmap;
+                    }
+                    else if (_lastCapturedBitmap != null)
+                    {
+                        frameBitmap = _lastCapturedBitmap;
+                        frameChanged = false;
                     }
 
                     overallLatencySw.Stop();

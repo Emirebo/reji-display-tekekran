@@ -2,7 +2,6 @@ using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Threading;
-using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Windows.Graphics.Capture;
@@ -79,7 +78,8 @@ namespace RejiDisplay.Services
         private GraphicsCaptureItem? _captureItem;
 
         private ID3D11Texture2D? _stagingTexture;
-        private WriteableBitmap? _writeableBitmap;
+        private byte[]? _pixelBuffer;
+        private BitmapSource? _currentBitmap;
 
         private Direct3D11CaptureFrame? _latestFrame;
         private readonly object _frameLock = new();
@@ -170,15 +170,7 @@ namespace RejiDisplay.Services
 
                 Width = _captureItem.Size.Width;
                 Height = _captureItem.Size.Height;
-
-                try
-                {
-                    Application.Current?.Dispatcher?.Invoke(() =>
-                    {
-                        _writeableBitmap = new WriteableBitmap(Width, Height, 96, 96, PixelFormats.Bgra32, null);
-                    });
-                }
-                catch { }
+                _pixelBuffer = new byte[Width * Height * 4];
 
                 _framePool = Direct3D11CaptureFramePool.CreateFreeThreaded(
                     _winrtDevice,
@@ -286,7 +278,7 @@ namespace RejiDisplay.Services
             acquisitionMs = 0;
             readbackMs = 0;
 
-            if (!IsInitialized || _d3dDevice == null || _d3dContext == null) return _writeableBitmap;
+            if (!IsInitialized || _d3dDevice == null || _d3dContext == null) return _currentBitmap;
 
             Direct3D11CaptureFrame? frame = null;
             lock (_frameLock)
@@ -297,7 +289,7 @@ namespace RejiDisplay.Services
 
             if (frame == null)
             {
-                return _writeableBitmap;
+                return _currentBitmap;
             }
 
             frameChanged = true;
@@ -306,39 +298,18 @@ namespace RejiDisplay.Services
             try
             {
                 using var surface = frame.Surface;
-                if (surface == null)
-                {
-                    frame.Dispose();
-                    return _writeableBitmap;
-                }
+                if (surface == null) return _currentBitmap;
 
                 IntPtr pSurfaceUnknown = IntPtr.Zero;
-                try
-                {
-                    pSurfaceUnknown = Marshal.GetIUnknownForObject(surface);
-                }
-                catch
-                {
-                    frame.Dispose();
-                    return _writeableBitmap;
-                }
-
-                if (pSurfaceUnknown == IntPtr.Zero)
-                {
-                    frame.Dispose();
-                    return _writeableBitmap;
-                }
+                try { pSurfaceUnknown = Marshal.GetIUnknownForObject(surface); } catch { }
+                if (pSurfaceUnknown == IntPtr.Zero) return _currentBitmap;
 
                 IntPtr pTexture2D = IntPtr.Zero;
                 try
                 {
                     Guid iidTexture2D = IID_ID3D11Texture2D;
                     int hrQuery = Marshal.QueryInterface(pSurfaceUnknown, ref iidTexture2D, out pTexture2D);
-                    if (hrQuery != 0 || pTexture2D == IntPtr.Zero)
-                    {
-                        frame.Dispose();
-                        return _writeableBitmap;
-                    }
+                    if (hrQuery != 0 || pTexture2D == IntPtr.Zero) return _currentBitmap;
                 }
                 finally
                 {
@@ -382,49 +353,59 @@ namespace RejiDisplay.Services
                 var readSw = Stopwatch.StartNew();
                 var mapped = _d3dContext.Map(_stagingTexture, 0, MapMode.Read, Vortice.Direct3D11.MapFlags.None);
 
-                int strokeBytes = width * 4;
-                int requiredBufferLength = strokeBytes * height;
+                int rowBytes = width * 4;
+                int totalBytes = rowBytes * height;
 
-                if (_writeableBitmap == null || _writeableBitmap.PixelWidth != width || _writeableBitmap.PixelHeight != height)
+                if (_pixelBuffer == null || _pixelBuffer.Length < totalBytes)
                 {
-                    _writeableBitmap = new WriteableBitmap(width, height, 96, 96, PixelFormats.Bgra32, null);
+                    _pixelBuffer = new byte[totalBytes];
                 }
 
-                _writeableBitmap.Lock();
-                IntPtr destPtr = _writeableBitmap.BackBuffer;
-                int destPitch = _writeableBitmap.BackBufferStride;
-                IntPtr srcPtr = mapped.DataPointer;
-                int srcPitch = (int)mapped.RowPitch;
-
-                if (srcPitch == destPitch)
+                unsafe
                 {
-                    NativeMethods.CopyMemory(destPtr, srcPtr, (uint)requiredBufferLength);
-                }
-                else
-                {
-                    for (int y = 0; y < height; y++)
+                    fixed (byte* pDest = _pixelBuffer)
                     {
-                        IntPtr rowSrc = IntPtr.Add(srcPtr, y * srcPitch);
-                        IntPtr rowDest = IntPtr.Add(destPtr, y * destPitch);
-                        NativeMethods.CopyMemory(rowDest, rowSrc, (uint)strokeBytes);
+                        IntPtr srcPtr = mapped.DataPointer;
+                        int srcPitch = (int)mapped.RowPitch;
+
+                        if (srcPitch == rowBytes)
+                        {
+                            NativeMethods.CopyMemory((IntPtr)pDest, srcPtr, (uint)totalBytes);
+                        }
+                        else
+                        {
+                            for (int y = 0; y < height; y++)
+                            {
+                                IntPtr rowSrc = IntPtr.Add(srcPtr, y * srcPitch);
+                                IntPtr rowDest = IntPtr.Add((IntPtr)pDest, y * rowBytes);
+                                NativeMethods.CopyMemory(rowDest, rowSrc, (uint)rowBytes);
+                            }
+                        }
                     }
                 }
-
-                _writeableBitmap.AddDirtyRect(new Int32Rect(0, 0, width, height));
-                _writeableBitmap.Unlock();
 
                 _d3dContext.Unmap(_stagingTexture, 0);
                 readSw.Stop();
                 readbackMs = Math.Round(readSw.Elapsed.TotalMilliseconds, 2);
 
-                return _writeableBitmap;
+                var bmp = BitmapSource.Create(
+                    width, height,
+                    96, 96,
+                    PixelFormats.Bgra32,
+                    null,
+                    _pixelBuffer,
+                    rowBytes);
+                bmp.Freeze();
+                _currentBitmap = bmp;
+
+                return _currentBitmap;
             }
             catch (Exception ex)
             {
                 InitError = $"CaptureFrame exception: {ex.Message}";
                 Logger.LogError("[WgcCaptureEngine] CaptureFrame exception, shutting down WGC engine and falling back", ex);
                 Dispose();
-                return _writeableBitmap;
+                return _currentBitmap;
             }
             finally
             {

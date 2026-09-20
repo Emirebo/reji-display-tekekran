@@ -148,33 +148,70 @@ namespace RejiDisplay.Services
 
         private async Task CaptureLoop(DisplayInfo display, CancellationToken token)
         {
+            WgcCaptureEngine? wgcEngine = null;
             DxgiCaptureEngine? dxgiEngine = null;
-            bool useDxgi = true;
+            bool useWgc = false;
+            bool useDxgi = false;
             string fallbackReason = string.Empty;
 
             Logger.Log($"[PresentationCapture] Starting capture loop for '{display.FriendlyName}' ({display.DeviceName})");
+
+            // 1. Attempt WGC capture first (preferred GPU backend)
             try
             {
-                dxgiEngine = new DxgiCaptureEngine(display.DeviceName);
-                if (dxgiEngine.IsInitialized)
+                wgcEngine = new WgcCaptureEngine(display.DeviceName);
+                if (wgcEngine.IsInitialized)
                 {
-                    CurrentCaptureMode = "DXGI_GPU (60FPS)";
-                    Logger.Log($"[BACKEND_TRANSITION] Active backend: DXGI_GPU ({display.Width}x{display.Height} @ {display.RefreshRate}Hz)");
+                    useWgc = true;
+                    CurrentCaptureMode = "WGC_GPU (120FPS)";
+                    Logger.Log($"[BACKEND_TRANSITION] Active backend: WGC_GPU ({wgcEngine.Width}x{wgcEngine.Height} @ {display.RefreshRate}Hz)");
                 }
                 else
                 {
-                    useDxgi = false;
-                    fallbackReason = dxgiEngine.InitError;
-                    CurrentCaptureMode = "WIN32_GDI (Persistent DC 60FPS)";
-                    Logger.Log($"[BACKEND_TRANSITION] Fallback to WIN32_GDI. Reason: {fallbackReason}");
+                    fallbackReason = $"WGC init failed: {wgcEngine.InitError}";
+                    wgcEngine.Dispose();
+                    wgcEngine = null;
                 }
             }
-            catch (Exception ex)
+            catch (Exception exWgc)
             {
-                useDxgi = false;
-                fallbackReason = $"{ex.GetType().Name} - {ex.Message}";
+                fallbackReason = $"WGC Exception: {exWgc.Message}";
+                wgcEngine?.Dispose();
+                wgcEngine = null;
+            }
+
+            // 2. Fallback to DXGI capture if WGC is not initialized
+            if (!useWgc)
+            {
+                try
+                {
+                    dxgiEngine = new DxgiCaptureEngine(display.DeviceName);
+                    if (dxgiEngine.IsInitialized)
+                    {
+                        useDxgi = true;
+                        CurrentCaptureMode = "DXGI_GPU (60FPS)";
+                        Logger.Log($"[BACKEND_TRANSITION] Active backend: DXGI_GPU ({display.Width}x{display.Height} @ {display.RefreshRate}Hz)");
+                    }
+                    else
+                    {
+                        fallbackReason += $" | DXGI init failed: {dxgiEngine.InitError}";
+                        dxgiEngine.Dispose();
+                        dxgiEngine = null;
+                    }
+                }
+                catch (Exception exDxgi)
+                {
+                    fallbackReason += $" | DXGI Exception: {exDxgi.Message}";
+                    dxgiEngine?.Dispose();
+                    dxgiEngine = null;
+                }
+            }
+
+            // 3. Fallback to WIN32_GDI if both GPU engines fail
+            if (!useWgc && !useDxgi)
+            {
                 CurrentCaptureMode = "WIN32_GDI (Persistent DC 60FPS)";
-                Logger.Log($"[BACKEND_TRANSITION] Exception initializing DXGI, fallback to WIN32_GDI: {ex.Message}");
+                Logger.Log($"[BACKEND_TRANSITION] Fallback to WIN32_GDI. Reason: {fallbackReason}");
             }
 
             var frameTimer = Stopwatch.StartNew();
@@ -191,7 +228,19 @@ namespace RejiDisplay.Services
 
                 try
                 {
-                    if (useDxgi && dxgiEngine != null && dxgiEngine.IsInitialized)
+                    if (useWgc && wgcEngine != null && wgcEngine.IsInitialized)
+                    {
+                        frameBitmap = wgcEngine.CaptureFrame(out frameChanged, out frameAcqMs, out frameReadMs);
+                        if (!wgcEngine.IsInitialized)
+                        {
+                            useWgc = false;
+                            CurrentCaptureMode = "WIN32_GDI (Persistent DC 60FPS)";
+                            Logger.Log($"[BACKEND_TRANSITION] WGC access lost, falling back to WIN32_GDI.");
+                            wgcEngine.Dispose();
+                            wgcEngine = null;
+                        }
+                    }
+                    else if (useDxgi && dxgiEngine != null && dxgiEngine.IsInitialized)
                     {
                         frameBitmap = dxgiEngine.CaptureFrame(out frameChanged, out frameAcqMs, out frameReadMs);
                         if (!frameChanged && frameBitmap == null)
@@ -199,7 +248,6 @@ namespace RejiDisplay.Services
                             if (!dxgiEngine.IsInitialized)
                             {
                                 useDxgi = false;
-                                fallbackReason = "DXGI device access lost or output reset.";
                                 CurrentCaptureMode = "WIN32_GDI (Persistent DC 60FPS)";
                                 Logger.Log($"[BACKEND_TRANSITION] DXGI access lost, falling back to WIN32_GDI.");
                                 dxgiEngine.Dispose();
@@ -350,6 +398,7 @@ namespace RejiDisplay.Services
                 }
             }
 
+            wgcEngine?.Dispose();
             dxgiEngine?.Dispose();
         }
 

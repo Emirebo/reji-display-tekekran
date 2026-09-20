@@ -186,7 +186,13 @@ namespace RejiDisplay
 
                 if (TxtHeaderCapture != null && DotHeaderCapture != null)
                 {
-                    if (e.CaptureMode.Contains("DXGI_GPU"))
+                    if (e.CaptureMode.Contains("WGC_GPU"))
+                    {
+                        TxtHeaderCapture.Text = "🟢 WGC GPU";
+                        TxtHeaderCapture.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#10B981"));
+                        DotHeaderCapture.Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#10B981"));
+                    }
+                    else if (e.CaptureMode.Contains("DXGI_GPU"))
                     {
                         TxtHeaderCapture.Text = "🟢 DXGI GPU";
                         TxtHeaderCapture.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#10B981"));

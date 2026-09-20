@@ -47,7 +47,7 @@ namespace RejiDisplay.Services
                     null,
                     DriverType.Hardware,
                     DeviceCreationFlags.None,
-                    null,
+                    Array.Empty<FeatureLevel>(),
                     out ID3D11Device? primDev,
                     out ID3D11DeviceContext? primCtx);
 
@@ -118,7 +118,7 @@ namespace RejiDisplay.Services
                                 adapter,
                                 DriverType.Unknown,
                                 DeviceCreationFlags.BgraSupport,
-                                null,
+                                Array.Empty<FeatureLevel>(),
                                 out ID3D11Device? dev,
                                 out ID3D11DeviceContext? ctx);
 

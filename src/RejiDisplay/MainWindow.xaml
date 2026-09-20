@@ -1,0 +1,301 @@
+<Window x:Class="RejiDisplay.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="LED Output Manager — RejiDisplay v0.1"
+        Height="780" Width="1100"
+        MinHeight="700" MinWidth="950"
+        WindowStartupLocation="CenterScreen"
+        Background="#0F172A"
+        Foreground="#F8FAFC">
+
+    <Window.Resources>
+        <!-- Dark Theme Colors -->
+        <SolidColorBrush x:Key="CardBackground" Color="#1E293B"/>
+        <SolidColorBrush x:Key="CardBorder" Color="#334155"/>
+        <SolidColorBrush x:Key="AccentBlue" Color="#0EA5E9"/>
+        <SolidColorBrush x:Key="AccentGreen" Color="#10B981"/>
+        <SolidColorBrush x:Key="AccentRed" Color="#EF4444"/>
+        <SolidColorBrush x:Key="AccentAmber" Color="#F59E0B"/>
+        <SolidColorBrush x:Key="TextPrimary" Color="#F8FAFC"/>
+        <SolidColorBrush x:Key="TextSecondary" Color="#94A3B8"/>
+
+        <!-- Button Style -->
+        <Style x:Key="PrimaryBtnStyle" TargetType="Button">
+            <Setter Property="Background" Value="#0EA5E9"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Padding" Value="16,10"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#38BDF8"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="border" Property="Background" Value="#475569"/>
+                                <Setter Property="Foreground" Value="#94A3B8"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="DangerBtnStyle" TargetType="Button" BasedOn="{StaticResource PrimaryBtnStyle}">
+            <Setter Property="Background" Value="#EF4444"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#F87171"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="WarningBtnStyle" TargetType="Button" BasedOn="{StaticResource PrimaryBtnStyle}">
+            <Setter Property="Background" Value="#F59E0B"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#FBBF24"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="SecondaryBtnStyle" TargetType="Button" BasedOn="{StaticResource PrimaryBtnStyle}">
+            <Setter Property="Background" Value="#334155"/>
+            <Setter Property="Foreground" Value="#E2E8F0"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#475569"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="ComboBoxStyle" TargetType="ComboBox">
+            <Setter Property="Background" Value="#0F172A"/>
+            <Setter Property="Foreground" Value="#F8FAFC"/>
+            <Setter Property="BorderBrush" Value="#475569"/>
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="FontSize" Value="14"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <!-- Header -->
+            <RowDefinition Height="Auto"/>
+            <!-- Center Display Reserved Notification -->
+            <RowDefinition Height="Auto"/>
+            <!-- Output Cards Area -->
+            <RowDefinition Height="*"/>
+            <!-- Footer Toolbar -->
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 1. Header Bar -->
+        <Grid Grid.Row="0" Margin="0,0,0,20">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0">
+                <TextBlock Text="LED OUTPUT MANAGER" FontSize="26" FontWeight="ExtraBold" Foreground="{StaticResource TextPrimary}"/>
+                <TextBlock Text="NovaStar VX2000 Pro Fiziksel Ekran Yönetim Paneli (v0.1 MVP)" FontSize="13" Foreground="{StaticResource TextSecondary}" Margin="0,4,0,0"/>
+            </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <Button Content="🔍 EKRANLARI NUMARALANDIR (IDENTIFY)" Style="{StaticResource SecondaryBtnStyle}" Click="BtnIdentify_Click" Margin="0,0,10,0"/>
+                <Button Content="🛑 TÜM ÇIKIŞLARI DURDUR" Style="{StaticResource DangerBtnStyle}" Click="BtnStopAll_Click"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- 2. Reserved Center Display Bar -->
+        <Border Grid.Row="1" Background="#1E293B" BorderBrush="#0EA5E9" BorderThickness="1,1,1,1" CornerRadius="8" Padding="14" Margin="0,0,0,20">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,15,0">
+                    <TextBlock Text="🖥️ REZERVE EKRAN (CENTER):" FontWeight="Bold" FontSize="14" Foreground="#38BDF8"/>
+                </StackPanel>
+                <TextBlock Grid.Column="1" Text="Windows Genişletilmiş Masaüstü (Sunum/Tarayıcı) — Bu uygulama tarafından YÖNETİLMEZ." VerticalAlignment="Center" FontSize="13" Foreground="{StaticResource TextSecondary}"/>
+                <ComboBox Grid.Column="2" x:Name="CmbReservedCenter" Width="280" Style="{StaticResource ComboBoxStyle}" SelectionChanged="CmbReservedCenter_SelectionChanged"/>
+            </Grid>
+        </Border>
+
+        <!-- 3. Output Cards Grid (LEFT & RIGHT) -->
+        <Grid Grid.Row="2" Margin="0,0,0,20">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="20"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- LEFT OUTPUT CARD -->
+            <Border Grid.Column="0" Background="{StaticResource CardBackground}" BorderBrush="{StaticResource CardBorder}" BorderThickness="1" CornerRadius="12" Padding="20">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Card Header -->
+                    <Grid Grid.Row="0" Margin="0,0,0,15">
+                        <TextBlock Text="LEFT LED" FontSize="20" FontWeight="Bold" Foreground="#38BDF8"/>
+                        <Border x:Name="BadgeLeftStatus" HorizontalAlignment="Right" Background="#334155" CornerRadius="12" Padding="10,4">
+                            <TextBlock x:Name="TxtLeftStatus" Text="INACTIVE" FontWeight="Bold" FontSize="12" Foreground="#94A3B8"/>
+                        </Border>
+                    </Grid>
+
+                    <!-- Display Assignment Selector -->
+                    <StackPanel Grid.Row="1" Margin="0,0,0,15">
+                        <TextBlock Text="Hedef Ekran (Physical Output):" FontSize="12" Foreground="{StaticResource TextSecondary}" Margin="0,0,0,4"/>
+                        <ComboBox x:Name="CmbLeftDisplay" Style="{StaticResource ComboBoxStyle}" SelectionChanged="CmbLeftDisplay_SelectionChanged"/>
+                    </StackPanel>
+
+                    <!-- Drag and Drop Image Target Zone -->
+                    <Border Grid.Row="2" x:Name="DropZoneLeft" Background="#0F172A" BorderBrush="#334155" BorderThickness="2" CornerRadius="8"
+                            AllowDrop="True" DragOver="DropZone_DragOver" Drop="DropZoneLeft_Drop" Margin="0,0,0,15" Padding="15">
+                        <Grid>
+                            <StackPanel x:Name="PanelLeftDropPrompt" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                <TextBlock Text="🖼️" FontSize="36" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                                <TextBlock Text="Görseli buraya sürükleyin" FontWeight="Bold" FontSize="14" HorizontalAlignment="Center" Foreground="{StaticResource TextPrimary}"/>
+                                <TextBlock Text="PNG, JPG, WEBP desteklenir" FontSize="12" HorizontalAlignment="Center" Foreground="{StaticResource TextSecondary}" Margin="0,4,0,0"/>
+                            </StackPanel>
+                            <Image x:Name="ImgLeftPreview" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center" Stretch="Uniform" MaxHeight="180"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Media Path & Details -->
+                    <StackPanel Grid.Row="3" Margin="0,0,0,15">
+                        <TextBlock Text="Seçili Görsel:" FontSize="12" Foreground="{StaticResource TextSecondary}"/>
+                        <TextBlock x:Name="TxtLeftMediaPath" Text="(Henüz görsel seçilmedi)" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Foreground="#E2E8F0" Margin="0,2,0,0"/>
+                    </StackPanel>
+
+                    <!-- Scale Mode Options -->
+                    <Grid Grid.Row="4" Margin="0,0,0,15">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Ölçekleme (Scale):" VerticalAlignment="Center" FontSize="13" Foreground="{StaticResource TextSecondary}" Margin="0,0,10,0"/>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                            <RadioButton x:Name="RadioLeftFit" Content="Fit (Orantılı)" GroupName="LeftScale" IsChecked="True" Foreground="#F8FAFC" Margin="0,0,15,0" Checked="RadioLeftScale_Checked"/>
+                            <RadioButton x:Name="RadioLeftFill" Content="Fill (Kırp)" GroupName="LeftScale" Foreground="#F8FAFC" Margin="0,0,15,0" Checked="RadioLeftScale_Checked"/>
+                            <RadioButton x:Name="RadioLeftStretch" Content="Stretch (Doldur)" GroupName="LeftScale" Foreground="#F8FAFC" Checked="RadioLeftScale_Checked"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Action Controls -->
+                    <StackPanel Grid.Row="5">
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Button Grid.Column="0" x:Name="BtnLeftShow" Content="▶ YAYINLA (SHOW)" Style="{StaticResource PrimaryBtnStyle}" Click="BtnLeftShow_Click"/>
+                            <Button Grid.Column="2" x:Name="BtnLeftStop" Content="⏹ DURDUR (STOP)" Style="{StaticResource DangerBtnStyle}" Click="BtnLeftStop_Click"/>
+                        </Grid>
+                        <Button x:Name="BtnLeftBlack" Content="⚫ SİYAH EKRAN (BLACK)" Style="{StaticResource WarningBtnStyle}" Click="BtnLeftBlack_Click"/>
+                        <TextBlock x:Name="TxtLeftError" Text="" Foreground="#F87171" FontSize="12" TextWrapping="Wrap" Margin="0,6,0,0" Visibility="Collapsed"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- RIGHT OUTPUT CARD -->
+            <Border Grid.Column="2" Background="{StaticResource CardBackground}" BorderBrush="{StaticResource CardBorder}" BorderThickness="1" CornerRadius="12" Padding="20">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Card Header -->
+                    <Grid Grid.Row="0" Margin="0,0,0,15">
+                        <TextBlock Text="RIGHT LED" FontSize="20" FontWeight="Bold" Foreground="#38BDF8"/>
+                        <Border x:Name="BadgeRightStatus" HorizontalAlignment="Right" Background="#334155" CornerRadius="12" Padding="10,4">
+                            <TextBlock x:Name="TxtRightStatus" Text="INACTIVE" FontWeight="Bold" FontSize="12" Foreground="#94A3B8"/>
+                        </Border>
+                    </Grid>
+
+                    <!-- Display Assignment Selector -->
+                    <StackPanel Grid.Row="1" Margin="0,0,0,15">
+                        <TextBlock Text="Hedef Ekran (Physical Output):" FontSize="12" Foreground="{StaticResource TextSecondary}" Margin="0,0,0,4"/>
+                        <ComboBox x:Name="CmbRightDisplay" Style="{StaticResource ComboBoxStyle}" SelectionChanged="CmbRightDisplay_SelectionChanged"/>
+                    </StackPanel>
+
+                    <!-- Drag and Drop Image Target Zone -->
+                    <Border Grid.Row="2" x:Name="DropZoneRight" Background="#0F172A" BorderBrush="#334155" BorderThickness="2" CornerRadius="8"
+                            AllowDrop="True" DragOver="DropZone_DragOver" Drop="DropZoneRight_Drop" Margin="0,0,0,15" Padding="15">
+                        <Grid>
+                            <StackPanel x:Name="PanelRightDropPrompt" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                <TextBlock Text="🖼️" FontSize="36" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                                <TextBlock Text="Görseli buraya sürükleyin" FontWeight="Bold" FontSize="14" HorizontalAlignment="Center" Foreground="{StaticResource TextPrimary}"/>
+                                <TextBlock Text="PNG, JPG, WEBP desteklenir" FontSize="12" HorizontalAlignment="Center" Foreground="{StaticResource TextSecondary}" Margin="0,4,0,0"/>
+                            </StackPanel>
+                            <Image x:Name="ImgRightPreview" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center" Stretch="Uniform" MaxHeight="180"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Media Path & Details -->
+                    <StackPanel Grid.Row="3" Margin="0,0,0,15">
+                        <TextBlock Text="Seçili Görsel:" FontSize="12" Foreground="{StaticResource TextSecondary}"/>
+                        <TextBlock x:Name="TxtRightMediaPath" Text="(Henüz görsel seçilmedi)" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Foreground="#E2E8F0" Margin="0,2,0,0"/>
+                    </StackPanel>
+
+                    <!-- Scale Mode Options -->
+                    <Grid Grid.Row="4" Margin="0,0,0,15">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Ölçekleme (Scale):" VerticalAlignment="Center" FontSize="13" Foreground="{StaticResource TextSecondary}" Margin="0,0,10,0"/>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                            <RadioButton x:Name="RadioRightFit" Content="Fit (Orantılı)" GroupName="RightScale" IsChecked="True" Foreground="#F8FAFC" Margin="0,0,15,0" Checked="RadioRightScale_Checked"/>
+                            <RadioButton x:Name="RadioRightFill" Content="Fill (Kırp)" GroupName="RightScale" Foreground="#F8FAFC" Margin="0,0,15,0" Checked="RadioRightScale_Checked"/>
+                            <RadioButton x:Name="RadioRightStretch" Content="Stretch (Doldur)" GroupName="RightScale" Foreground="#F8FAFC" Checked="RadioRightScale_Checked"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Action Controls -->
+                    <StackPanel Grid.Row="5">
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Button Grid.Column="0" x:Name="BtnRightShow" Content="▶ YAYINLA (SHOW)" Style="{StaticResource PrimaryBtnStyle}" Click="BtnRightShow_Click"/>
+                            <Button Grid.Column="2" x:Name="BtnRightStop" Content="⏹ DURDUR (STOP)" Style="{StaticResource DangerBtnStyle}" Click="BtnRightStop_Click"/>
+                        </Grid>
+                        <Button x:Name="BtnRightBlack" Content="⚫ SİYAH EKRAN (BLACK)" Style="{StaticResource WarningBtnStyle}" Click="BtnRightBlack_Click"/>
+                        <TextBlock x:Name="TxtRightError" Text="" Foreground="#F87171" FontSize="12" TextWrapping="Wrap" Margin="0,6,0,0" Visibility="Collapsed"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- 4. Footer Status Bar -->
+        <Border Grid.Row="3" Background="#1E293B" CornerRadius="6" Padding="12,8">
+            <Grid>
+                <TextBlock x:Name="TxtGlobalStatus" Text="Sistem Hazır. Ekran düzenini doğrulayın ve medya yükleyin." FontSize="12" Foreground="{StaticResource TextSecondary}"/>
+                <TextBlock Text="RejiDisplay v0.1 | Antigravity IDE" HorizontalAlignment="Right" FontSize="12" Foreground="#64748B"/>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

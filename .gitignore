@@ -1,0 +1,29 @@
+# Build & Compilation Artifacts
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+[Ll]og/
+[Ll]ogs/
+*.log
+
+# IDE & Editor Files
+.vs/
+.vscode/
+.idea/
+.gemini/
+*.suo
+*.user
+*.userossc
+*.sln.docstates
+*.userprefs
+
+# OS Generated Files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+[Dd]s_[Ss]tore
+
+# Backup & Temporary Files
+*.tmp
+*.bak
+*.cache

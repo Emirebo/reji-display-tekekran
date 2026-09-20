@@ -1,0 +1,24 @@
+<Window x:Class="RejiDisplay.OutputWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="LED Output"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Topmost="True"
+        Background="Black"
+        WindowStartupLocation="Manual">
+    <Grid Background="Black">
+        <!-- Displayed Media Image -->
+        <Image x:Name="MediaImage"
+               HorizontalAlignment="Center"
+               VerticalAlignment="Center"
+               Stretch="Uniform"
+               Visibility="Visible" />
+
+        <!-- Blackout Layer -->
+        <Grid x:Name="BlackoutOverlay"
+              Background="Black"
+              Visibility="Collapsed" />
+    </Grid>
+</Window>

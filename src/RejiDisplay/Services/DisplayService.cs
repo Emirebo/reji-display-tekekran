@@ -155,6 +155,69 @@ namespace RejiDisplay.Services
             ).ToList();
         }
 
+        /// <summary>
+        /// Filters assignable presentation capture source displays (Display 2 role).
+        /// Rule 1: Exclude Master LED Output display (prevents recursive capture loop).
+        /// </summary>
+        public List<DisplayInfo> GetAssignablePresentationSources(
+            IEnumerable<DisplayInfo> allDisplays,
+            DisplayInfo? currentMasterOutput)
+        {
+            return allDisplays.Where(d =>
+                !d.IsPrimary &&
+                (currentMasterOutput == null || !IsSameDisplay(d, currentMasterOutput))
+            ).ToList();
+        }
+
+        /// <summary>
+        /// Filters assignable master LED output displays (Display 3 role).
+        /// Rule 1: Exclude Primary operator control display (Display 1 role).
+        /// Rule 2: Exclude Presentation capture source display (Display 2 role).
+        /// </summary>
+        public List<DisplayInfo> GetAssignableMasterOutputs(
+            IEnumerable<DisplayInfo> allDisplays,
+            DisplayInfo? currentPresentationSource)
+        {
+            return allDisplays.Where(d =>
+                !d.IsPrimary &&
+                (currentPresentationSource == null || !IsSameDisplay(d, currentPresentationSource))
+            ).ToList();
+        }
+
+        /// <summary>
+        /// Generates simulated 3-monitor display topology for single/dual monitor dev testing.
+        /// </summary>
+        public List<DisplayInfo> GetSimulatedDisplays()
+        {
+            return new List<DisplayInfo>
+            {
+                new DisplayInfo
+                {
+                    DisplayIndex = 1,
+                    DeviceName = @"\\.\DISPLAY1",
+                    DeviceId = "SIMULATED_PRIMARY_CONTROL",
+                    FriendlyName = "Simulated Control Monitor (1920x1080) [Primary]",
+                    Left = 0, Top = 0, Width = 1920, Height = 1080, IsPrimary = true
+                },
+                new DisplayInfo
+                {
+                    DisplayIndex = 2,
+                    DeviceName = @"\\.\DISPLAY2",
+                    DeviceId = "SIMULATED_PRESENTATION_SRC",
+                    FriendlyName = "Simulated Presentation Display (1920x1080) [Display 2]",
+                    Left = 1920, Top = 0, Width = 1920, Height = 1080, IsPrimary = false
+                },
+                new DisplayInfo
+                {
+                    DisplayIndex = 3,
+                    DeviceName = @"\\.\DISPLAY3",
+                    DeviceId = "SIMULATED_MASTER_OUTPUT",
+                    FriendlyName = "Simulated Master LED Output (4301x1720) [Display 3]",
+                    Left = 3840, Top = 0, Width = 4301, Height = 1720, IsPrimary = false
+                }
+            };
+        }
+
         public bool IsSameDisplay(DisplayInfo a, DisplayInfo b)
         {
             if (a == null || b == null) return false;

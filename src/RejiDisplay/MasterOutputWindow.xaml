@@ -1,0 +1,40 @@
+<Window x:Class="RejiDisplay.MasterOutputWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="RejiDisplay — Master LED Output (Display 3)"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Topmost="True"
+        Background="Black"
+        WindowStartupLocation="Manual">
+    <Grid Background="Black">
+        <!-- Master Composition Viewbox: Maps 4301x1720 Logical Canvas onto Physical Display 3 -->
+        <Viewbox Stretch="Uniform">
+            <Canvas Width="4301" Height="1720" Background="Black">
+
+                <!-- LEFT LED REGION (860 x 1720) -->
+                <Canvas Canvas.Left="0" Canvas.Top="0" Width="860" Height="1720" Background="Black" ClipToBounds="True">
+                    <Image x:Name="LeftMediaImage" Width="860" Height="1720" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    <Grid x:Name="LeftBlackoutOverlay" Width="860" Height="1720" Background="Black" Visibility="Collapsed" />
+                </Canvas>
+
+                <!-- MIDDLE LED REGION (2581 x 1376, Configurable Y-Offset) -->
+                <Canvas x:Name="MiddleCanvas" Canvas.Left="860" Canvas.Top="172" Width="2581" Height="1376" Background="#0A0A0A" ClipToBounds="True">
+                    <Image x:Name="MiddleCaptureImage" Width="2581" Height="1376" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    <TextBlock x:Name="MiddleFallbackText" Text="PRESENTATION SOURCE OFFLINE" Foreground="#555555" FontSize="36" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" Canvas.Left="400" Canvas.Top="620" Visibility="Visible" />
+                </Canvas>
+
+                <!-- RIGHT LED REGION (860 x 1720) -->
+                <Canvas Canvas.Left="3441" Canvas.Top="0" Width="860" Height="1720" Background="Black" ClipToBounds="True">
+                    <Image x:Name="RightMediaImage" Width="860" Height="1720" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    <Grid x:Name="RightBlackoutOverlay" Width="860" Height="1720" Background="Black" Visibility="Collapsed" />
+                </Canvas>
+
+                <!-- MASTER BLACKOUT OVERLAY -->
+                <Grid x:Name="MasterBlackoutOverlay" Width="4301" Height="1720" Background="Black" Visibility="Collapsed" />
+
+            </Canvas>
+        </Viewbox>
+    </Grid>
+</Window>

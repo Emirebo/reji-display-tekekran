@@ -17,7 +17,7 @@ namespace RejiDisplay.Services
             }
             else
             {
-                string appDataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "RejiDisplay");
+                string appDataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "RejiDisplay-TekEkran");
                 Directory.CreateDirectory(appDataDir);
                 _settingsFilePath = Path.Combine(appDataDir, "settings.json");
             }

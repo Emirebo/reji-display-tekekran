@@ -79,7 +79,7 @@ namespace RejiDisplay
                 // Startup Logging (Priority 2)
                 try
                 {
-                    string execPath = System.Reflection.Assembly.GetExecutingAssembly().Location;
+                    string execPath = BuildInfo.GetExecutablePath();
                     string ver = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "0.3.0";
                     var dispList = _allDisplays.Select(d => $"{d.FriendlyName} [{d.DeviceName}] ({d.Width}x{d.Height}@{d.RefreshRate}Hz)").ToList();
                     var gpuList = new List<string>();
@@ -105,14 +105,21 @@ namespace RejiDisplay
                         gpuList.Add("DXGI Factory Enum Unavailable");
                     }
 
+                    Logger.Log($"[BUILD_IDENTITY] {BuildInfo.BuildBanner} | Built: {BuildInfo.BuildTimestamp}");
+
                     Logger.LogStartup(
                         execPath,
                         ver,
-                        "v0.3-master-output",
+                        BuildInfo.GitCommitHash,
                         dispList,
                         _presentationSourceDisplay?.DeviceName,
                         gpuList
                     );
+
+                    if (TxtGlobalStatus != null)
+                    {
+                        TxtGlobalStatus.Text = $"🚀 RejiDisplay v0.3 {BuildInfo.BuildBanner}";
+                    }
                 }
                 catch (Exception ex)
                 {

@@ -230,38 +230,30 @@ namespace RejiDisplay.Services
                 {
                     if (useWgc && wgcEngine != null && wgcEngine.IsInitialized)
                     {
+                        CurrentCaptureMode = "WGC_GPU (120FPS)";
                         frameBitmap = wgcEngine.CaptureFrame(out frameChanged, out frameAcqMs, out frameReadMs);
                         if (!wgcEngine.IsInitialized)
                         {
                             useWgc = false;
-                            CurrentCaptureMode = "WIN32_GDI (Persistent DC 60FPS)";
-                            Logger.Log($"[BACKEND_TRANSITION] WGC access lost, falling back to WIN32_GDI.");
                             wgcEngine.Dispose();
                             wgcEngine = null;
+                            Logger.Log($"[BACKEND_TRANSITION] WGC device access lost. Switching fallback.");
                         }
                     }
                     else if (useDxgi && dxgiEngine != null && dxgiEngine.IsInitialized)
                     {
+                        CurrentCaptureMode = "DXGI_GPU (60FPS)";
                         frameBitmap = dxgiEngine.CaptureFrame(out frameChanged, out frameAcqMs, out frameReadMs);
-                        if (!frameChanged && frameBitmap == null)
+                        if (!dxgiEngine.IsInitialized)
                         {
-                            if (!dxgiEngine.IsInitialized)
-                            {
-                                useDxgi = false;
-                                CurrentCaptureMode = "WIN32_GDI (Persistent DC 60FPS)";
-                                Logger.Log($"[BACKEND_TRANSITION] DXGI access lost, falling back to WIN32_GDI.");
-                                dxgiEngine.Dispose();
-                                dxgiEngine = null;
-                            }
-                            else
-                            {
-                                await Task.Delay(1, token);
-                                continue;
-                            }
+                            useDxgi = false;
+                            dxgiEngine.Dispose();
+                            dxgiEngine = null;
+                            Logger.Log($"[BACKEND_TRANSITION] DXGI device access lost. Switching fallback.");
                         }
                     }
 
-                    if (frameBitmap == null)
+                    if (!useWgc && !useDxgi)
                     {
                         CurrentCaptureMode = "WIN32_GDI (Persistent DC 60FPS)";
                         var gdiSw = Stopwatch.StartNew();
@@ -269,6 +261,7 @@ namespace RejiDisplay.Services
                         gdiSw.Stop();
                         frameAcqMs = gdiSw.Elapsed.TotalMilliseconds;
                         frameReadMs = 0;
+                        frameChanged = true;
                     }
 
                     overallLatencySw.Stop();

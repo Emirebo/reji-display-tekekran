@@ -15,12 +15,14 @@ namespace RejiDisplay.Services
 {
     public class FrameArrivedEventArgs : EventArgs
     {
+        public long FrameId { get; }
         public BitmapSource Frame { get; }
         public double Fps { get; }
         public string CaptureMode { get; }
 
-        public FrameArrivedEventArgs(BitmapSource frame, double fps, string captureMode)
+        public FrameArrivedEventArgs(long frameId, BitmapSource frame, double fps, string captureMode)
         {
+            FrameId = frameId;
             Frame = frame;
             Fps = fps;
             CaptureMode = captureMode;
@@ -164,8 +166,8 @@ namespace RejiDisplay.Services
                 if (wgcEngine.IsInitialized)
                 {
                     useWgc = true;
-                    CurrentCaptureMode = "WGC_GPU (120FPS)";
-                    Logger.Log($"[BACKEND_TRANSITION] Active backend: WGC_GPU ({wgcEngine.Width}x{wgcEngine.Height} @ {display.RefreshRate}Hz)");
+                    CurrentCaptureMode = "BAŞLATILIYOR (WGC_GPU)";
+                    Logger.Log($"[BACKEND_TRANSITION] Active backend: WGC_GPU ({wgcEngine.Width}x{wgcEngine.Height} @ {display.RefreshRate}Hz) - Initializing first frame...");
                 }
                 else
                 {
@@ -190,8 +192,8 @@ namespace RejiDisplay.Services
                     if (dxgiEngine.IsInitialized)
                     {
                         useDxgi = true;
-                        CurrentCaptureMode = "DXGI_GPU (60FPS)";
-                        Logger.Log($"[BACKEND_TRANSITION] Active backend: DXGI_GPU ({display.Width}x{display.Height} @ {display.RefreshRate}Hz)");
+                        CurrentCaptureMode = "BAŞLATILIYOR (DXGI_GPU)";
+                        Logger.Log($"[BACKEND_TRANSITION] Active backend: DXGI_GPU ({display.Width}x{display.Height} @ {display.RefreshRate}Hz) - Initializing first frame...");
                     }
                     else
                     {
@@ -211,11 +213,12 @@ namespace RejiDisplay.Services
             // 3. Fallback to WIN32_GDI if both GPU engines fail
             if (!useWgc && !useDxgi)
             {
-                CurrentCaptureMode = "WIN32_GDI (Persistent DC 60FPS)";
+                CurrentCaptureMode = "BAŞLATILIYOR (WIN32_GDI)";
                 Logger.Log($"[BACKEND_TRANSITION] Fallback to WIN32_GDI. Reason: {fallbackReason}");
             }
 
             var frameTimer = Stopwatch.StartNew();
+            var initTimeoutTimer = Stopwatch.StartNew();
             long targetFrameTicks = Stopwatch.Frequency / 60; // 60 FPS pacing
 
             while (!token.IsCancellationRequested)
@@ -231,9 +234,19 @@ namespace RejiDisplay.Services
                 {
                     if (useWgc && wgcEngine != null && wgcEngine.IsInitialized)
                     {
-                        CurrentCaptureMode = "WGC_GPU (120FPS)";
                         frameBitmap = wgcEngine.CaptureFrame(out frameChanged, out frameAcqMs, out frameReadMs);
-                        if (!wgcEngine.IsInitialized)
+                        if (frameBitmap != null)
+                        {
+                            CurrentCaptureMode = "WGC_GPU (120FPS)";
+                        }
+                        else if (initTimeoutTimer.ElapsedMilliseconds > 2000 && _uniqueFrameCount == 0)
+                        {
+                            Logger.Log($"[WGC_NO_FRAMES] WGC engine produced 0 frames in {initTimeoutTimer.ElapsedMilliseconds}ms. Shutting down WGC and switching fallback to WIN32_GDI.");
+                            useWgc = false;
+                            wgcEngine.Dispose();
+                            wgcEngine = null;
+                        }
+                        else if (!wgcEngine.IsInitialized)
                         {
                             useWgc = false;
                             wgcEngine.Dispose();
@@ -243,9 +256,12 @@ namespace RejiDisplay.Services
                     }
                     else if (useDxgi && dxgiEngine != null && dxgiEngine.IsInitialized)
                     {
-                        CurrentCaptureMode = "DXGI_GPU (60FPS)";
                         frameBitmap = dxgiEngine.CaptureFrame(out frameChanged, out frameAcqMs, out frameReadMs);
-                        if (!dxgiEngine.IsInitialized)
+                        if (frameBitmap != null)
+                        {
+                            CurrentCaptureMode = "DXGI_GPU (60FPS)";
+                        }
+                        else if (!dxgiEngine.IsInitialized)
                         {
                             useDxgi = false;
                             dxgiEngine.Dispose();
@@ -256,13 +272,20 @@ namespace RejiDisplay.Services
 
                     if (!useWgc && !useDxgi)
                     {
-                        CurrentCaptureMode = "WIN32_GDI (Persistent DC 60FPS)";
                         var gdiSw = Stopwatch.StartNew();
                         frameBitmap = CaptureMonitorWin32GdiPersistent(display);
                         gdiSw.Stop();
                         frameAcqMs = gdiSw.Elapsed.TotalMilliseconds;
                         frameReadMs = 0;
                         frameChanged = true;
+                        if (frameBitmap != null)
+                        {
+                            CurrentCaptureMode = "WIN32_GDI (Persistent DC 60FPS)";
+                        }
+                        else
+                        {
+                            CurrentCaptureMode = "KARE YOK / HATA";
+                        }
                     }
 
                     if (frameBitmap != null)
@@ -350,16 +373,22 @@ namespace RejiDisplay.Services
                                 var capturedBmp = frameBitmap;
                                 var capturedFps = CurrentFps;
                                 var capturedMode = CurrentCaptureMode;
+                                long currentFrameId = wgcEngine?.CurrentFrameId ?? _frameCount;
 
                                 var dispatcher = Application.Current?.Dispatcher;
                                 if (dispatcher != null)
                                 {
+                                    if (currentFrameId <= 5)
+                                    {
+                                        Logger.Log($"[FRAME_TRACE] Stage 4 (PresentationCaptureService Published Frame): FrameId={currentFrameId} | Mode={capturedMode} | Fps={capturedFps:F1} | ThreadId={Environment.CurrentManagedThreadId}");
+                                    }
+
                                     _ = dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Render, new Action(() =>
                                     {
                                         try
                                         {
                                             _previewFrameCount++;
-                                            FrameArrived?.Invoke(this, new FrameArrivedEventArgs(capturedBmp, capturedFps, capturedMode));
+                                            FrameArrived?.Invoke(this, new FrameArrivedEventArgs(currentFrameId, capturedBmp, capturedFps, capturedMode));
                                         }
                                         finally
                                         {

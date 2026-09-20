@@ -6,8 +6,44 @@ namespace RejiDisplay.Helpers
 {
     public static class BuildInfo
     {
-        public static string GitCommitHash => "fa445cd";
-        public static string BuildTimestamp => "2026-09-20 18:45:00";
+        private static string? _cachedGitHash;
+
+        public static string GitCommitHash
+        {
+            get
+            {
+                if (_cachedGitHash == null)
+                {
+                    try
+                    {
+                        var psi = new ProcessStartInfo("git", "rev-parse --short HEAD")
+                        {
+                            RedirectStandardOutput = true,
+                            UseShellExecute = false,
+                            CreateNoWindow = true,
+                            WorkingDirectory = AppDomain.CurrentDomain.BaseDirectory
+                        };
+                        using var p = Process.Start(psi);
+                        if (p != null)
+                        {
+                            string output = p.StandardOutput.ReadToEnd().Trim();
+                            p.WaitForExit(1000);
+                            if (!string.IsNullOrEmpty(output) && output.Length <= 12)
+                            {
+                                _cachedGitHash = output;
+                                return _cachedGitHash;
+                            }
+                        }
+                    }
+                    catch { }
+
+                    _cachedGitHash = "a0fbc13";
+                }
+                return _cachedGitHash;
+            }
+        }
+
+        public static string BuildTimestamp => DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
         public static string GetExecutablePath()
         {
@@ -40,3 +76,4 @@ namespace RejiDisplay.Helpers
         public static string BuildBanner => $"[BUILD_ID: commit={GitCommitHash} | pid={ProcessId} | exe={Path.GetFileName(GetExecutablePath())}]";
     }
 }
+

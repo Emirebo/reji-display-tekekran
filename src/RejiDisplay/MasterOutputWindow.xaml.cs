@@ -200,12 +200,16 @@ namespace RejiDisplay
             }
         }
 
-        public void UpdateMiddleCaptureFrame(BitmapSource? frameBitmap)
+        public void UpdateMiddleCaptureFrame(BitmapSource? frameBitmap, long frameId = 0)
         {
             if (frameBitmap != null)
             {
                 MiddleCaptureImage.Source = frameBitmap;
                 MiddleFallbackText.Visibility = Visibility.Collapsed;
+                if (frameId <= 5 && frameId > 0)
+                {
+                    Logger.Log($"[FRAME_TRACE] Stage 8 (MasterOutputWindow Middle Image Updated): FrameId={frameId} | ImageSize={frameBitmap.PixelWidth}x{frameBitmap.PixelHeight} | FallbackTextHidden=True | ThreadId={Environment.CurrentManagedThreadId}");
+                }
             }
             else
             {

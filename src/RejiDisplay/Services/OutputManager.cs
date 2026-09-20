@@ -153,11 +153,11 @@ namespace RejiDisplay.Services
             }
         }
 
-        public void UpdateMiddleCaptureFrame(BitmapSource? frameBitmap)
+        public void UpdateMiddleCaptureFrame(BitmapSource? frameBitmap, long frameId = 0)
         {
             if (_masterWindow != null && _masterWindow.IsLoaded)
             {
-                _masterWindow.UpdateMiddleCaptureFrame(frameBitmap);
+                _masterWindow.UpdateMiddleCaptureFrame(frameBitmap, frameId);
             }
         }
 

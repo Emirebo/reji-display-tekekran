@@ -187,13 +187,32 @@ namespace RejiDisplay
         {
             Dispatcher.Invoke(() =>
             {
-                if (ImgMiddleMasterPreview != null) ImgMiddleMasterPreview.Source = e.Frame;
-                string fpsStr = $"{e.Fps:F1}";
+                if (e.FrameId <= 5 && e.FrameId > 0)
+                {
+                    Logger.Log($"[FRAME_TRACE] Stage 5 (MainWindow.OnCaptureFrameArrived Received): FrameId={e.FrameId} | Fps={e.Fps:F1} | Mode={e.CaptureMode} | ThreadId={Environment.CurrentManagedThreadId}");
+                }
+
+                if (ImgMiddleMasterPreview != null)
+                {
+                    ImgMiddleMasterPreview.Source = e.Frame;
+                    if (e.FrameId <= 5 && e.FrameId > 0)
+                    {
+                        Logger.Log($"[FRAME_TRACE] Stage 6 (ImgMiddleMasterPreview.Source Updated): FrameId={e.FrameId} | ImageWidth={e.Frame?.PixelWidth}x{e.Frame?.PixelHeight}");
+                    }
+                }
+
+                string fpsStr = e.Fps > 0 ? $"{e.Fps:F1}" : "--";
                 if (TxtCaptureFps != null) TxtCaptureFps.Text = fpsStr;
 
                 if (TxtHeaderCapture != null && DotHeaderCapture != null)
                 {
-                    if (e.CaptureMode.Contains("WGC_GPU"))
+                    if (e.CaptureMode.Contains("BAŞLATILIYOR"))
+                    {
+                        TxtHeaderCapture.Text = "🟡 BAŞLATILIYOR";
+                        TxtHeaderCapture.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FBBF24"));
+                        DotHeaderCapture.Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FBBF24"));
+                    }
+                    else if (e.CaptureMode.Contains("WGC_GPU"))
                     {
                         TxtHeaderCapture.Text = "🟢 WGC GPU";
                         TxtHeaderCapture.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#10B981"));
@@ -205,17 +224,27 @@ namespace RejiDisplay
                         TxtHeaderCapture.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#10B981"));
                         DotHeaderCapture.Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#10B981"));
                     }
-                    else
+                    else if (e.CaptureMode.Contains("WIN32_GDI"))
                     {
                         TxtHeaderCapture.Text = "⚠️ WIN32_GDI";
                         TxtHeaderCapture.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#F59E0B"));
                         DotHeaderCapture.Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#F59E0B"));
                     }
+                    else
+                    {
+                        TxtHeaderCapture.Text = "❌ KARE YOK";
+                        TxtHeaderCapture.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#EF4444"));
+                        DotHeaderCapture.Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#EF4444"));
+                    }
                 }
 
                 if (_outputManager.IsMasterOutputActive)
                 {
-                    _outputManager.UpdateMiddleCaptureFrame(e.Frame);
+                    if (e.FrameId <= 5 && e.FrameId > 0)
+                    {
+                        Logger.Log($"[FRAME_TRACE] Stage 7 (OutputManager.UpdateMiddleCaptureFrame Called): FrameId={e.FrameId}");
+                    }
+                    _outputManager.UpdateMiddleCaptureFrame(e.Frame, e.FrameId);
                 }
             });
         }
@@ -303,6 +332,30 @@ namespace RejiDisplay
 
             UpdateRoleComboBoxes();
             UpdateLegacyCardDisplayComboBoxes();
+            UpdateFooterDisplayInfo();
+        }
+
+        private void UpdateFooterDisplayInfo()
+        {
+            string ctrlStr = _controlDisplay != null ? $"{_controlDisplay.DisplayLabel}" : "Seçilmedi";
+            string presStr = _presentationSourceDisplay != null ? $"{_presentationSourceDisplay.DisplayLabel}" : "Seçilmedi";
+            string mstrStr = _masterOutputDisplay != null ? $"{_masterOutputDisplay.DisplayLabel}" : "Seçilmedi";
+
+            if (TxtFooterScreenInfo != null)
+            {
+                TxtFooterScreenInfo.Text = $"🖥️ Kontrol: {ctrlStr}  |  Sunum: {presStr}  |  Master: {mstrStr}";
+            }
+
+            Logger.Log($"[MONITOR_ALIGNMENT] --- MONITOR ASSIGNMENT MATRIX ---");
+            Logger.Log($"[MONITOR_ALIGNMENT] KONTROL (Display 1): DeviceName={_controlDisplay?.DeviceName ?? "N/A"}, Resolution={_controlDisplay?.Width}x{_controlDisplay?.Height}@{_controlDisplay?.RefreshRate}Hz, Bounds=({_controlDisplay?.Left},{_controlDisplay?.Top},{_controlDisplay?.Width},{_controlDisplay?.Height}), UILabel={_controlDisplay?.DisplayLabel}");
+            Logger.Log($"[MONITOR_ALIGNMENT] SUNUM (Display 2): DeviceName={_presentationSourceDisplay?.DeviceName ?? "N/A"}, Resolution={_presentationSourceDisplay?.Width}x{_presentationSourceDisplay?.Height}@{_presentationSourceDisplay?.RefreshRate}Hz, Bounds=({_presentationSourceDisplay?.Left},{_presentationSourceDisplay?.Top},{_presentationSourceDisplay?.Width},{_presentationSourceDisplay?.Height}), SavedSetting={_appSettings.PresentationDeviceName}, UISelection={GetSelectedDisplay(CmbPresentationSource)?.DisplayLabel}, CaptureTarget={_presentationSourceDisplay?.DeviceName}");
+            Logger.Log($"[MONITOR_ALIGNMENT] MASTER (Display 3): DeviceName={_masterOutputDisplay?.DeviceName ?? "N/A"}, Resolution={_masterOutputDisplay?.Width}x{_masterOutputDisplay?.Height}@{_masterOutputDisplay?.RefreshRate}Hz, Bounds=({_masterOutputDisplay?.Left},{_masterOutputDisplay?.Top},{_masterOutputDisplay?.Width},{_masterOutputDisplay?.Height}), SavedSetting={_appSettings.MasterOutputDeviceName}, UISelection={GetSelectedDisplay(CmbMasterOutput)?.DisplayLabel}, OutputManagerTarget={_outputManager.ActiveMasterDisplay?.DeviceName ?? "OFFLINE"}");
+
+            if (_presentationSourceDisplay != null && _masterOutputDisplay != null && _displayService.IsSameDisplay(_presentationSourceDisplay, _masterOutputDisplay))
+            {
+                Logger.Log($"[MONITOR_CONFLICT] WARNING: Presentation Source and Master Output are mapped to the same physical device: {_presentationSourceDisplay.DeviceName}!");
+                if (TxtGlobalStatus != null) TxtGlobalStatus.Text = "⚠️ UYARI: Sunum Kaynağı ile Master Çıkışı aynı ekran olamaz!";
+            }
         }
 
         private void UpdateRoleComboBoxes()
@@ -502,6 +555,7 @@ namespace RejiDisplay
             }
 
             UpdateRoleComboBoxes();
+            UpdateFooterDisplayInfo();
         }
 
         private void CmbMasterOutput_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -526,6 +580,7 @@ namespace RejiDisplay
             }
 
             UpdateRoleComboBoxes();
+            UpdateFooterDisplayInfo();
         }
 
         private void SliderMiddleYOffset_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)

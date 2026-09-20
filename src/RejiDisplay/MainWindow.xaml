@@ -620,7 +620,7 @@
                 <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                         <TextBlock Text="EKRAN AYARLARI: " FontSize="11" FontWeight="Bold" Foreground="#94A3B8"/>
-                        <TextBlock Text="🖥️ Kontrol: Ekran 1  |  Sunum: Ekran 2  |  Master: Ekran 3" FontSize="11" Foreground="#38BDF8"/>
+                        <TextBlock x:Name="TxtFooterScreenInfo" Text="🖥️ Kontrol: Ekran 1  |  Sunum: Ekran 2  |  Master: Ekran 3" FontSize="11" Foreground="#38BDF8"/>
                     </StackPanel>
                     <TextBlock x:Name="TxtGlobalStatus" Text="Sistem Hazır." FontSize="10" Foreground="#10B981" HorizontalAlignment="Center" Margin="0,2,0,0"/>
                 </StackPanel>

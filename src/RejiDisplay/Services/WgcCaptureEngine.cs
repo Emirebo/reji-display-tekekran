@@ -50,6 +50,11 @@ namespace RejiDisplay.Services
         [UnmanagedFunctionPointer(CallingConvention.StdCall)]
         private delegate int CreateForMonitorDelegate(IntPtr pThis, IntPtr hMonitor, ref Guid riid, out IntPtr ppv);
 
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+        private delegate int GetInterfaceDelegate(IntPtr pThis, ref Guid riid, out IntPtr ppv);
+
+        private static readonly Guid IID_IDirect3DDxgiInterfaceAccess = new Guid("A9B3D012-3DF2-4EE3-B8D1-8695F457D3C1");
+
         [DllImport("api-ms-win-core-winrt-l1-1-0.dll")]
         private static extern int RoGetActivationFactory(IntPtr hstr, ref Guid iid, out IntPtr factory);
 
@@ -69,6 +74,7 @@ namespace RejiDisplay.Services
         public int Width { get; private set; }
         public int Height { get; private set; }
         public string TargetDeviceName { get; private set; } = string.Empty;
+        public long CurrentFrameId => _globalFrameId;
 
         private ID3D11Device? _d3dDevice;
         private ID3D11DeviceContext? _d3dContext;
@@ -83,6 +89,8 @@ namespace RejiDisplay.Services
 
         private Direct3D11CaptureFrame? _latestFrame;
         private readonly object _frameLock = new();
+        private long _globalFrameId = 0;
+
 
         public WgcCaptureEngine(string targetDeviceName)
         {
@@ -257,6 +265,13 @@ namespace RejiDisplay.Services
                 var frame = sender.TryGetNextFrame();
                 if (frame != null)
                 {
+                    long currentId = Interlocked.Increment(ref _globalFrameId);
+                    if (currentId <= 5)
+                    {
+                        Logger.Log($"[FRAME_TRACE] Stage 1 (WGC OnFrameArrived): FrameId={currentId} | ThreadId={Environment.CurrentManagedThreadId} | Timestamp={DateTime.Now:HH:mm:ss.fff}");
+                        Logger.Log($"[FRAME_TRACE] Stage 2 (TryGetNextFrame Succeeded): FrameId={currentId} | ContentSize={frame.ContentSize.Width}x{frame.ContentSize.Height} | SystemRelativeTime={frame.SystemRelativeTime.Ticks}");
+                    }
+
                     Direct3D11CaptureFrame? oldFrame;
                     lock (_frameLock)
                     {
@@ -293,6 +308,7 @@ namespace RejiDisplay.Services
             }
 
             frameChanged = true;
+            long frameId = _globalFrameId;
             var acqSw = Stopwatch.StartNew();
 
             try
@@ -301,20 +317,45 @@ namespace RejiDisplay.Services
                 if (surface == null) return _currentBitmap;
 
                 IntPtr pSurfaceUnknown = IntPtr.Zero;
-                try { pSurfaceUnknown = Marshal.GetIUnknownForObject(surface); } catch { }
+                try { pSurfaceUnknown = Marshal.GetIUnknownForObject(surface); } catch (Exception exUnknown) { Logger.Log($"[WgcCaptureEngine] Marshal.GetIUnknownForObject failed: {exUnknown.Message}"); }
                 if (pSurfaceUnknown == IntPtr.Zero) return _currentBitmap;
 
                 IntPtr pTexture2D = IntPtr.Zero;
                 try
                 {
-                    Guid iidTexture2D = IID_ID3D11Texture2D;
-                    int hrQuery = Marshal.QueryInterface(pSurfaceUnknown, ref iidTexture2D, out pTexture2D);
-                    if (hrQuery != 0 || pTexture2D == IntPtr.Zero) return _currentBitmap;
+                    Guid iidDxgiAccess = IID_IDirect3DDxgiInterfaceAccess;
+                    int hrQuery = Marshal.QueryInterface(pSurfaceUnknown, ref iidDxgiAccess, out IntPtr pDxgiAccess);
+                    if (hrQuery == 0 && pDxgiAccess != IntPtr.Zero)
+                    {
+                        try
+                        {
+                            IntPtr vtable = Marshal.ReadIntPtr(pDxgiAccess);
+                            IntPtr pGetInterface = Marshal.ReadIntPtr(vtable, 3 * IntPtr.Size);
+                            var getInterfaceFunc = Marshal.GetDelegateForFunctionPointer<GetInterfaceDelegate>(pGetInterface);
+
+                            Guid iidTexture2D = IID_ID3D11Texture2D;
+                            int hrGet = getInterfaceFunc(pDxgiAccess, ref iidTexture2D, out pTexture2D);
+                            if (hrGet != 0)
+                            {
+                                Logger.Log($"[WgcCaptureEngine] IDirect3DDxgiInterfaceAccess.GetInterface failed: HRESULT 0x{hrGet:X8}");
+                            }
+                        }
+                        finally
+                        {
+                            Marshal.Release(pDxgiAccess);
+                        }
+                    }
+                    else
+                    {
+                        Logger.Log($"[WgcCaptureEngine] QueryInterface(IDirect3DDxgiInterfaceAccess) failed: HRESULT 0x{hrQuery:X8}");
+                    }
                 }
                 finally
                 {
                     Marshal.Release(pSurfaceUnknown);
                 }
+
+                if (pTexture2D == IntPtr.Zero) return _currentBitmap;
 
                 using var srcTexture = new ID3D11Texture2D(pTexture2D);
                 Marshal.Release(pTexture2D);
@@ -397,6 +438,11 @@ namespace RejiDisplay.Services
                     rowBytes);
                 bmp.Freeze();
                 _currentBitmap = bmp;
+
+                if (frameId <= 5)
+                {
+                    Logger.Log($"[FRAME_TRACE] Stage 3 (Bitmap Conversion Completed): FrameId={frameId} | Size={width}x{height} | ReadbackMs={readbackMs}ms | ThreadId={Environment.CurrentManagedThreadId}");
+                }
 
                 return _currentBitmap;
             }

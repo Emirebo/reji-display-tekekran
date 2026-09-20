@@ -239,9 +239,9 @@ namespace RejiDisplay.Services
                         {
                             CurrentCaptureMode = "WGC_GPU (120FPS)";
                         }
-                        else if (initTimeoutTimer.ElapsedMilliseconds > 2000 && _uniqueFrameCount == 0)
+                        else if (initTimeoutTimer.ElapsedMilliseconds > 2000 && _lastCapturedBitmap == null)
                         {
-                            Logger.Log($"[WGC_NO_FRAMES] WGC engine produced 0 frames in {initTimeoutTimer.ElapsedMilliseconds}ms. Shutting down WGC and switching fallback to WIN32_GDI.");
+                            Logger.Log($"[WGC_NO_FRAMES] WGC engine produced 0 initial frames in {initTimeoutTimer.ElapsedMilliseconds}ms. Shutting down WGC and switching fallback to WIN32_GDI.");
                             useWgc = false;
                             wgcEngine.Dispose();
                             wgcEngine = null;

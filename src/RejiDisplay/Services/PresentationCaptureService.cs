@@ -234,7 +234,11 @@ namespace RejiDisplay.Services
                 {
                     if (useWgc && wgcEngine != null && wgcEngine.IsInitialized)
                     {
-                        frameBitmap = wgcEngine.CaptureFrame(out frameChanged, out frameAcqMs, out frameReadMs);
+                        var wgcRes = await wgcEngine.CaptureFrameAsync();
+                        frameBitmap = wgcRes.Bitmap;
+                        frameChanged = wgcRes.FrameChanged;
+                        frameAcqMs = wgcRes.AcquisitionMs;
+                        frameReadMs = wgcRes.ReadbackMs;
                         if (frameBitmap != null)
                         {
                             CurrentCaptureMode = "WGC_GPU (120FPS)";
@@ -380,7 +384,7 @@ namespace RejiDisplay.Services
                                 {
                                     if (currentFrameId <= 5)
                                     {
-                                        Logger.Log($"[FRAME_TRACE] Stage 4 (PresentationCaptureService Published Frame): FrameId={currentFrameId} | Mode={capturedMode} | Fps={capturedFps:F1} | ThreadId={Environment.CurrentManagedThreadId}");
+                                        Logger.Log($"[FRAME_TRACE] Stage 7 (PresentationCaptureService Published Frame): FrameId={currentFrameId} | Mode={capturedMode} | Fps={capturedFps:F1} | ThreadId={Environment.CurrentManagedThreadId}");
                                     }
 
                                     _ = dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Render, new Action(() =>

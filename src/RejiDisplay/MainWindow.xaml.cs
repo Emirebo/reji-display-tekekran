@@ -187,17 +187,12 @@ namespace RejiDisplay
         {
             Dispatcher.Invoke(() =>
             {
-                if (e.FrameId <= 5 && e.FrameId > 0)
-                {
-                    Logger.Log($"[FRAME_TRACE] Stage 5 (MainWindow.OnCaptureFrameArrived Received): FrameId={e.FrameId} | Fps={e.Fps:F1} | Mode={e.CaptureMode} | ThreadId={Environment.CurrentManagedThreadId}");
-                }
-
                 if (ImgMiddleMasterPreview != null)
                 {
                     ImgMiddleMasterPreview.Source = e.Frame;
                     if (e.FrameId <= 5 && e.FrameId > 0)
                     {
-                        Logger.Log($"[FRAME_TRACE] Stage 6 (ImgMiddleMasterPreview.Source Updated): FrameId={e.FrameId} | ImageWidth={e.Frame?.PixelWidth}x{e.Frame?.PixelHeight}");
+                        Logger.Log($"[FRAME_TRACE] Stage 8 (Control Preview Updated): FrameId={e.FrameId} | ImageWidth={e.Frame?.PixelWidth}x{e.Frame?.PixelHeight} | Mode={e.CaptureMode}");
                     }
                 }
 

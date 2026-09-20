@@ -208,7 +208,7 @@ namespace RejiDisplay
                 MiddleFallbackText.Visibility = Visibility.Collapsed;
                 if (frameId <= 5 && frameId > 0)
                 {
-                    Logger.Log($"[FRAME_TRACE] Stage 8 (MasterOutputWindow Middle Image Updated): FrameId={frameId} | ImageSize={frameBitmap.PixelWidth}x{frameBitmap.PixelHeight} | FallbackTextHidden=True | ThreadId={Environment.CurrentManagedThreadId}");
+                    Logger.Log($"[FRAME_TRACE] Stage 9 (Master Middle Image Updated): FrameId={frameId} | ImageSize={frameBitmap.PixelWidth}x{frameBitmap.PixelHeight} | FallbackTextHidden=True | ThreadId={Environment.CurrentManagedThreadId}");
                 }
             }
             else

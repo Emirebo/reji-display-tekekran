@@ -1,12 +1,14 @@
 using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Windows.Graphics.Capture;
 using Windows.Graphics.DirectX;
 using Windows.Graphics.DirectX.Direct3D11;
+using Windows.Graphics.Imaging;
 using Vortice.Direct3D;
 using Vortice.Direct3D11;
 using Vortice.DXGI;
@@ -53,7 +55,97 @@ namespace RejiDisplay.Services
         [UnmanagedFunctionPointer(CallingConvention.StdCall)]
         private delegate int GetInterfaceDelegate(IntPtr pThis, ref Guid riid, out IntPtr ppv);
 
-        private static readonly Guid IID_IDirect3DDxgiInterfaceAccess = new Guid("A9B3D012-3DF2-4EE3-B8D1-8695F457D3C1");
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+        private delegate int QueryInterfaceDelegate(IntPtr pThis, ref Guid riid, out IntPtr ppv);
+
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+        private delegate int GetIidsDelegate(IntPtr pThis, out uint count, out IntPtr pIids);
+
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+        private delegate void SetMultithreadProtectedDelegate(IntPtr pThis, [MarshalAs(UnmanagedType.Bool)] bool bMTProtect);
+
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+        private delegate void CopyResourceDelegate(IntPtr pContext, IntPtr pDstResource, IntPtr pSrcResource);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct D3D11_TEXTURE2D_DESC
+        {
+            public uint Width;
+            public uint Height;
+            public uint MipLevels;
+            public uint ArraySize;
+            public uint Format;
+            public uint SampleDescCount;
+            public uint SampleDescQuality;
+            public uint Usage;
+            public uint BindFlags;
+            public uint CPUAccessFlags;
+            public uint MiscFlags;
+        }
+
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+        private delegate void GetDescDelegate(IntPtr pThis, out D3D11_TEXTURE2D_DESC pDesc);
+
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+        private delegate void GetDeviceDelegate(IntPtr pThis, out IntPtr ppDevice);
+
+        [ComImport]
+        [Guid("30D5A829-7FA4-4026-83BB-D75BAE4EA99E")]
+        [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+        public interface IDirect3DDxgiInterfaceAccess
+        {
+            [PreserveSig]
+            int GetInterface([In] ref Guid riid, out IntPtr ppv);
+        }
+
+        [ComImport]
+        [Guid("30D5A829-7FA4-4026-83BB-D75BAE4EA99E")]
+        [InterfaceType(ComInterfaceType.InterfaceIsIInspectable)]
+        public interface IDirect3DDxgiInterfaceAccess_Inspectable
+        {
+            [PreserveSig]
+            int GetInterface([In] ref Guid riid, out IntPtr ppv);
+        }
+
+        [ComImport]
+        [Guid("A9B3D012-3DF2-4EE3-B8D1-8695F457D3C1")]
+        [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+        public interface IDirect3DDxgiInterfaceAccess_Alt_Unknown
+        {
+            [PreserveSig]
+            int GetInterface([In] ref Guid riid, out IntPtr ppv);
+        }
+
+        [ComImport]
+        [Guid("A9B3D012-3DF2-4EE3-B8D1-8695F457D3C1")]
+        [InterfaceType(ComInterfaceType.InterfaceIsIInspectable)]
+        public interface IDirect3DDxgiInterfaceAccess_Alt_Inspectable
+        {
+            [PreserveSig]
+            int GetInterface([In] ref Guid riid, out IntPtr ppv);
+        }
+
+        private static bool ValidateTexture(IntPtr pCandidate, out IntPtr pValidTexture)
+        {
+            pValidTexture = IntPtr.Zero;
+            if (pCandidate == IntPtr.Zero) return false;
+
+            try
+            {
+                Guid iidTex2D = new Guid("6F15806F-9114-4D77-967A-FD56951163B9");
+                int hr = Marshal.QueryInterface(pCandidate, ref iidTex2D, out pValidTexture);
+                Marshal.Release(pCandidate);
+                return (hr == 0 && pValidTexture != IntPtr.Zero);
+            }
+            catch
+            {
+                try { Marshal.Release(pCandidate); } catch { }
+                return false;
+            }
+        }
+
+        private static readonly Guid IID_IDirect3DDxgiInterfaceAccess = new Guid("30D5A829-7FA4-4026-83BB-D75BAE4EA99E");
+        private static readonly Guid IID_IDirect3DDxgiInterfaceAccess_Alt = new Guid("A9B3D012-3DF2-4EE3-B8D1-8695F457D3C1");
 
         [DllImport("api-ms-win-core-winrt-l1-1-0.dll")]
         private static extern int RoGetActivationFactory(IntPtr hstr, ref Guid iid, out IntPtr factory);
@@ -122,6 +214,42 @@ namespace RejiDisplay.Services
             return foundHandle;
         }
 
+        private static IDXGIAdapter1? FindAdapterForMonitor(IntPtr hMonitor)
+        {
+            try
+            {
+                if (DXGI.CreateDXGIFactory1(out IDXGIFactory1? factory).Success && factory != null)
+                {
+                    using (factory)
+                    {
+                        uint i = 0;
+                        while (factory.EnumAdapters1(i, out IDXGIAdapter1? adapter).Success && adapter != null)
+                        {
+                            uint j = 0;
+                            while (adapter.EnumOutputs(j, out IDXGIOutput? output).Success && output != null)
+                            {
+                                if (output.Description.Monitor == hMonitor)
+                                {
+                                    output.Dispose();
+                                    Logger.Log($"[WGC_ADAPTER_MATCH] Found DXGI Adapter '{adapter.Description.Description}' for HMONITOR 0x{hMonitor.ToString("X")}");
+                                    return adapter;
+                                }
+                                output.Dispose();
+                                j++;
+                            }
+                            adapter.Dispose();
+                            i++;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Log($"[WGC_ADAPTER_MATCH] FindAdapterForMonitor warning: {ex.Message}");
+            }
+            return null;
+        }
+
         private void InitializeWgc(string targetDeviceName)
         {
             try
@@ -141,9 +269,12 @@ namespace RejiDisplay.Services
                     return;
                 }
 
+                using var adapter = FindAdapterForMonitor(hMonitor);
+                DriverType driverType = adapter != null ? DriverType.Unknown : DriverType.Hardware;
+
                 var hrDev = D3D11.D3D11CreateDevice(
-                    null,
-                    DriverType.Hardware,
+                    adapter,
+                    driverType,
                     DeviceCreationFlags.BgraSupport,
                     new[] { FeatureLevel.Level_11_1, FeatureLevel.Level_11_0 },
                     out _d3dDevice,
@@ -154,6 +285,31 @@ namespace RejiDisplay.Services
                     InitError = $"D3D11CreateDevice failed: HRESULT 0x{hrDev.Code:X8}";
                     Logger.Log($"[WgcCaptureEngine_INIT_FAIL] {InitError}");
                     return;
+                }
+
+                try
+                {
+                    Guid iidMt = new Guid("9B7E4E00-342C-4106-A19F-4F2704F689F0");
+                    int hrMt = Marshal.QueryInterface(_d3dContext.NativePointer, ref iidMt, out IntPtr pMt);
+                    if (hrMt == 0 && pMt != IntPtr.Zero)
+                    {
+                        try
+                        {
+                            IntPtr vt = Marshal.ReadIntPtr(pMt);
+                            IntPtr pSlot5 = Marshal.ReadIntPtr(vt, 5 * IntPtr.Size);
+                            var setMt = Marshal.GetDelegateForFunctionPointer<SetMultithreadProtectedDelegate>(pSlot5);
+                            setMt(pMt, true);
+                            Logger.Log("[WgcCaptureEngine] ID3D10Multithread protection enabled.");
+                        }
+                        finally
+                        {
+                            Marshal.Release(pMt);
+                        }
+                    }
+                }
+                catch (Exception exMt)
+                {
+                    Logger.Log($"[WgcCaptureEngine] SetMultithreadProtected warning: {exMt.Message}");
                 }
 
                 using var dxgiDevice = _d3dDevice.QueryInterface<IDXGIDevice>();
@@ -295,13 +451,19 @@ namespace RejiDisplay.Services
             }
         }
 
-        public BitmapSource? CaptureFrame(out bool frameChanged, out double acquisitionMs, out double readbackMs)
+        public struct CaptureFrameResult
         {
-            frameChanged = false;
-            acquisitionMs = 0;
-            readbackMs = 0;
+            public BitmapSource? Bitmap;
+            public bool FrameChanged;
+            public double AcquisitionMs;
+            public double ReadbackMs;
+        }
 
-            if (!IsInitialized || _d3dDevice == null || _d3dContext == null) return _currentBitmap;
+        public async Task<CaptureFrameResult> CaptureFrameAsync()
+        {
+            var result = new CaptureFrameResult { Bitmap = _currentBitmap };
+
+            if (!IsInitialized) return result;
 
             Direct3D11CaptureFrame? frame = null;
             lock (_frameLock)
@@ -310,195 +472,41 @@ namespace RejiDisplay.Services
                 _latestFrame = null;
             }
 
-            if (frame == null)
-            {
-                return _currentBitmap;
-            }
+            if (frame == null) return result;
 
-            frameChanged = true;
+            result.FrameChanged = true;
             long frameId = _globalFrameId;
             var acqSw = Stopwatch.StartNew();
 
             try
             {
                 using var surface = frame.Surface;
-                if (surface == null) return _currentBitmap;
+                if (surface == null) return result;
 
-                IntPtr pNativeAbi = IntPtr.Zero;
-                if (surface is WinRT.IWinRTObject winrtObj && winrtObj.NativeObject != null)
+                if (frameId <= 5)
                 {
-                    pNativeAbi = winrtObj.NativeObject.ThisPtr;
-                }
-                else
-                {
-                    try { pNativeAbi = Marshal.GetIUnknownForObject(surface); } catch { }
+                    Logger.Log($"[FRAME_TRACE] Stage 3 (WinRT IDirect3DSurface Obtained): FrameId={frameId}");
                 }
 
-                if (pNativeAbi == IntPtr.Zero)
+                using var sb = await SoftwareBitmap.CreateCopyFromSurfaceAsync(surface);
+
+                if (sb == null)
                 {
-                    Logger.Log($"[FRAME_TRACE] Stage 3a FAILED: Native ABI pointer for surface is NULL (FrameId={frameId})");
-                    return _currentBitmap;
+                    if (frameId <= 5) Logger.Log($"[FRAME_TRACE] Stage 4 FAILED: SoftwareBitmap.CreateCopyFromSurfaceAsync returned null");
+                    return result;
                 }
 
                 if (frameId <= 5)
                 {
-                    Logger.Log($"[FRAME_TRACE] Stage 3a (Native Surface Pointer Obtained): FrameId={frameId} | pNativeAbi=0x{pNativeAbi.ToString("X")}");
+                    Logger.Log($"[FRAME_TRACE] Stage 4 (SoftwareBitmap Created): FrameId={frameId} | Size={sb.PixelWidth}x{sb.PixelHeight} | Format={sb.BitmapPixelFormat}");
                 }
 
-                IntPtr pTexture2D = IntPtr.Zero;
-                try
-                {
-                    Guid iidDxgiAccess = IID_IDirect3DDxgiInterfaceAccess;
-                    int hrQuery = Marshal.QueryInterface(pNativeAbi, ref iidDxgiAccess, out IntPtr pDxgiAccess);
-                    if (hrQuery == 0 && pDxgiAccess != IntPtr.Zero)
-                    {
-                        if (frameId <= 5)
-                        {
-                            Logger.Log($"[FRAME_TRACE] Stage 3b (QueryInterface IDirect3DDxgiInterfaceAccess Succeeded): FrameId={frameId} | HRESULT=0x00000000 | pDxgiAccess=0x{pDxgiAccess.ToString("X")}");
-                        }
-
-                        try
-                        {
-                            Guid iidTexture2D = IID_ID3D11Texture2D;
-                            Guid iidResource = new Guid("dc8e6380-2d2b-4227-af69-9e4277442880");
-                            Guid iidDxgiSurface = new Guid("cafcb56c-6e3c-4b16-9250-4fe044ee6e56");
-
-                            // Method A: Direct QueryInterface on pDxgiAccess
-                            int hrA = Marshal.QueryInterface(pDxgiAccess, ref iidTexture2D, out pTexture2D);
-                            if (hrA == 0 && pTexture2D != IntPtr.Zero)
-                            {
-                                if (frameId <= 5) Logger.Log($"[FRAME_TRACE] Stage 3c (Method A QueryInterface Succeeded): FrameId={frameId} | pTexture2D=0x{pTexture2D.ToString("X")}");
-                            }
-                            else if (frameId <= 5)
-                            {
-                                Logger.Log($"[WGC_COM_TRACE] Method A QueryInterface(ID3D11Texture2D) HRESULT=0x{hrA:X8}");
-                            }
-
-                            // Method B, C, D: IDirect3DDxgiInterfaceAccess.GetInterface vtable slot 3
-                            if (pTexture2D == IntPtr.Zero)
-                            {
-                                IntPtr vtable = Marshal.ReadIntPtr(pDxgiAccess);
-                                IntPtr pGetInterface = Marshal.ReadIntPtr(vtable, 3 * IntPtr.Size);
-                                var getInterfaceFunc = Marshal.GetDelegateForFunctionPointer<GetInterfaceDelegate>(pGetInterface);
-
-                                // Method B: GetInterface(IID_ID3D11Texture2D)
-                                int hrB = getInterfaceFunc(pDxgiAccess, ref iidTexture2D, out pTexture2D);
-                                if (hrB == 0 && pTexture2D != IntPtr.Zero)
-                                {
-                                    if (frameId <= 5) Logger.Log($"[FRAME_TRACE] Stage 3c (Method B GetInterface ID3D11Texture2D Succeeded): FrameId={frameId} | pTexture2D=0x{pTexture2D.ToString("X")}");
-                                }
-                                else if (frameId <= 5)
-                                {
-                                    Logger.Log($"[WGC_COM_TRACE] Method B GetInterface(ID3D11Texture2D) HRESULT=0x{hrB:X8}");
-                                }
-
-                                // Method C: GetInterface(IID_ID3D11Resource)
-                                if (pTexture2D == IntPtr.Zero)
-                                {
-                                    IntPtr pRes = IntPtr.Zero;
-                                    int hrC = getInterfaceFunc(pDxgiAccess, ref iidResource, out pRes);
-                                    if (hrC == 0 && pRes != IntPtr.Zero)
-                                    {
-                                        try
-                                        {
-                                            int hrQ = Marshal.QueryInterface(pRes, ref iidTexture2D, out pTexture2D);
-                                            if (hrQ == 0 && pTexture2D != IntPtr.Zero && frameId <= 5)
-                                            {
-                                                Logger.Log($"[FRAME_TRACE] Stage 3c (Method C GetInterface ID3D11Resource Succeeded): FrameId={frameId} | pTexture2D=0x{pTexture2D.ToString("X")}");
-                                            }
-                                        }
-                                        finally
-                                        {
-                                            Marshal.Release(pRes);
-                                        }
-                                    }
-                                    else if (frameId <= 5)
-                                    {
-                                        Logger.Log($"[WGC_COM_TRACE] Method C GetInterface(ID3D11Resource) HRESULT=0x{hrC:X8}");
-                                    }
-                                }
-
-                                // Method D: GetInterface(IID_IDXGISurface)
-                                if (pTexture2D == IntPtr.Zero)
-                                {
-                                    IntPtr pDxgiSurf = IntPtr.Zero;
-                                    int hrD = getInterfaceFunc(pDxgiAccess, ref iidDxgiSurface, out pDxgiSurf);
-                                    if (hrD == 0 && pDxgiSurf != IntPtr.Zero)
-                                    {
-                                        try
-                                        {
-                                            int hrQ = Marshal.QueryInterface(pDxgiSurf, ref iidTexture2D, out pTexture2D);
-                                            if (hrQ == 0 && pTexture2D != IntPtr.Zero && frameId <= 5)
-                                            {
-                                                Logger.Log($"[FRAME_TRACE] Stage 3c (Method D GetInterface IDXGISurface Succeeded): FrameId={frameId} | pTexture2D=0x{pTexture2D.ToString("X")}");
-                                            }
-                                        }
-                                        finally
-                                        {
-                                            Marshal.Release(pDxgiSurf);
-                                        }
-                                    }
-                                    else if (frameId <= 5)
-                                    {
-                                        Logger.Log($"[WGC_COM_TRACE] Method D GetInterface(IDXGISurface) HRESULT=0x{hrD:X8}");
-                                    }
-                                }
-                            }
-                        }
-                        finally
-                        {
-                            Marshal.Release(pDxgiAccess);
-                        }
-                    }
-                    else
-                    {
-                        Logger.Log($"[FRAME_TRACE] Stage 3b FAILED: QueryInterface(IDirect3DDxgiInterfaceAccess) failed: HRESULT=0x{hrQuery:X8} (FrameId={frameId})");
-                    }
-                }
-                finally
-                {
-                    Marshal.Release(pNativeAbi);
-                }
-
-                if (pTexture2D == IntPtr.Zero) return _currentBitmap;
-
-                using var srcTexture = new ID3D11Texture2D(pTexture2D);
-                Marshal.Release(pTexture2D);
-
-                int width = (int)srcTexture.Description.Width;
-                int height = (int)srcTexture.Description.Height;
-                Format format = srcTexture.Description.Format;
-
-                if (_stagingTexture == null || Width != width || Height != height)
-                {
-                    _stagingTexture?.Dispose();
-                    Width = width;
-                    Height = height;
-
-                    var desc = new Texture2DDescription
-                    {
-                        Width = (uint)width,
-                        Height = (uint)height,
-                        MipLevels = 1,
-                        ArraySize = 1,
-                        Format = format,
-                        SampleDescription = new SampleDescription(1, 0),
-                        Usage = ResourceUsage.Staging,
-                        BindFlags = BindFlags.None,
-                        CPUAccessFlags = CpuAccessFlags.Read,
-                        MiscFlags = ResourceOptionFlags.None
-                    };
-
-                    _stagingTexture = _d3dDevice.CreateTexture2D(desc);
-                }
-
-                _d3dContext.CopyResource(srcTexture, _stagingTexture);
                 acqSw.Stop();
-                acquisitionMs = Math.Round(acqSw.Elapsed.TotalMilliseconds, 2);
+                result.AcquisitionMs = Math.Round(acqSw.Elapsed.TotalMilliseconds, 2);
 
                 var readSw = Stopwatch.StartNew();
-                var mapped = _d3dContext.Map(_stagingTexture, 0, MapMode.Read, Vortice.Direct3D11.MapFlags.None);
-
+                int width = sb.PixelWidth;
+                int height = sb.PixelHeight;
                 int rowBytes = width * 4;
                 int totalBytes = rowBytes * height;
 
@@ -507,32 +515,29 @@ namespace RejiDisplay.Services
                     _pixelBuffer = new byte[totalBytes];
                 }
 
-                unsafe
-                {
-                    fixed (byte* pDest = _pixelBuffer)
-                    {
-                        IntPtr srcPtr = mapped.DataPointer;
-                        int srcPitch = (int)mapped.RowPitch;
-
-                        if (srcPitch == rowBytes)
-                        {
-                            NativeMethods.CopyMemory((IntPtr)pDest, srcPtr, (uint)totalBytes);
-                        }
-                        else
-                        {
-                            for (int y = 0; y < height; y++)
-                            {
-                                IntPtr rowSrc = IntPtr.Add(srcPtr, y * srcPitch);
-                                IntPtr rowDest = IntPtr.Add((IntPtr)pDest, y * rowBytes);
-                                NativeMethods.CopyMemory(rowDest, rowSrc, (uint)rowBytes);
-                            }
-                        }
-                    }
-                }
-
-                _d3dContext.Unmap(_stagingTexture, 0);
+                sb.CopyToBuffer(_pixelBuffer.AsBuffer());
                 readSw.Stop();
-                readbackMs = Math.Round(readSw.Elapsed.TotalMilliseconds, 2);
+                result.ReadbackMs = Math.Round(readSw.Elapsed.TotalMilliseconds, 2);
+
+                if (frameId <= 5 && _pixelBuffer != null)
+                {
+                    int b0 = _pixelBuffer[0], g0 = _pixelBuffer[1], r0 = _pixelBuffer[2], a0 = _pixelBuffer[3];
+                    int cIdx = (height / 2 * width + width / 2) * 4;
+                    int bc = _pixelBuffer[cIdx], gc = _pixelBuffer[cIdx + 1], rc = _pixelBuffer[cIdx + 2], ac = _pixelBuffer[cIdx + 3];
+                    int trIdx = (height / 4 * width + width * 3 / 4) * 4;
+                    int btr = _pixelBuffer[trIdx], gtr = _pixelBuffer[trIdx + 1], rtr = _pixelBuffer[trIdx + 2], atr = _pixelBuffer[trIdx + 3];
+                    int blIdx = (height * 3 / 4 * width + width / 4) * 4;
+                    int bbl = _pixelBuffer[blIdx], gbl = _pixelBuffer[blIdx + 1], rbl = _pixelBuffer[blIdx + 2], abl = _pixelBuffer[blIdx + 3];
+
+                    long nonZeroCount = 0;
+                    for (int i = 0; i < _pixelBuffer.Length; i += 16)
+                    {
+                        if (_pixelBuffer[i] != 0 || _pixelBuffer[i + 1] != 0 || _pixelBuffer[i + 2] != 0)
+                            nonZeroCount++;
+                    }
+
+                    Logger.Log($"[PIXEL_SAMPLE] FrameId={frameId} | Size={width}x{height} | TopLeft=(B:{b0},G:{g0},R:{r0},A:{a0}) | Center=(B:{bc},G:{gc},R:{rc},A:{ac}) | TopRight=(B:{btr},G:{gtr},R:{rtr},A:{atr}) | BottomLeft=(B:{bbl},G:{gbl},R:{rbl},A:{abl}) | SampledNonZeroRGBPixels={nonZeroCount}");
+                }
 
                 var bmp = BitmapSource.Create(
                     width, height,
@@ -543,20 +548,21 @@ namespace RejiDisplay.Services
                     rowBytes);
                 bmp.Freeze();
                 _currentBitmap = bmp;
+                result.Bitmap = bmp;
 
                 if (frameId <= 5)
                 {
-                    Logger.Log($"[FRAME_TRACE] Stage 3 (Bitmap Conversion Completed): FrameId={frameId} | Size={width}x{height} | ReadbackMs={readbackMs}ms | ThreadId={Environment.CurrentManagedThreadId}");
+                    Logger.Log($"[FRAME_TRACE] Stage 6 (Texture -> Bitmap Conversion Completed): FrameId={frameId} | Size={width}x{height} | ReadbackMs={result.ReadbackMs}ms | ThreadId={Environment.CurrentManagedThreadId}");
                 }
 
-                return _currentBitmap;
+                return result;
             }
             catch (Exception ex)
             {
                 InitError = $"CaptureFrame exception: {ex.Message}";
                 Logger.LogError("[WgcCaptureEngine] CaptureFrame exception, shutting down WGC engine and falling back", ex);
                 Dispose();
-                return _currentBitmap;
+                return result;
             }
             finally
             {

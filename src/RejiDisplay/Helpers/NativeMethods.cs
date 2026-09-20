@@ -84,8 +84,11 @@ namespace RejiDisplay.Helpers
         public const uint SWP_FRAMECHANGED = 0x0020;
         public const uint SWP_SHOWWINDOW = 0x0040;
 
-        [DllImport("kernel32.dll", EntryPoint = "RtlMoveMemory", SetLastError = false)]
-        public static extern void CopyMemory(IntPtr dest, IntPtr src, uint count);
+        public static unsafe void CopyMemory(IntPtr dest, IntPtr src, uint count)
+        {
+            if (dest == IntPtr.Zero || src == IntPtr.Zero || count == 0) return;
+            Buffer.MemoryCopy((void*)src, (void*)dest, count, count);
+        }
 
         // Win32 GDI Screen Capture P/Invoke API
         [DllImport("user32.dll", SetLastError = true)]

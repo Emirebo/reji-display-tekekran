@@ -171,6 +171,15 @@ namespace RejiDisplay.Services
                 Width = _captureItem.Size.Width;
                 Height = _captureItem.Size.Height;
 
+                try
+                {
+                    Application.Current?.Dispatcher?.Invoke(() =>
+                    {
+                        _writeableBitmap = new WriteableBitmap(Width, Height, 96, 96, PixelFormats.Bgra32, null);
+                    });
+                }
+                catch { }
+
                 _framePool = Direct3D11CaptureFramePool.CreateFreeThreaded(
                     _winrtDevice,
                     DirectXPixelFormat.B8G8R8A8UIntNormalized,
@@ -303,19 +312,37 @@ namespace RejiDisplay.Services
                     return _writeableBitmap;
                 }
 
-                IntPtr pSurfaceAbi = (surface as WinRT.IWinRTObject)?.NativeObject?.ThisPtr ?? IntPtr.Zero;
-                if (pSurfaceAbi == IntPtr.Zero)
+                IntPtr pSurfaceUnknown = IntPtr.Zero;
+                try
+                {
+                    pSurfaceUnknown = Marshal.GetIUnknownForObject(surface);
+                }
+                catch
                 {
                     frame.Dispose();
                     return _writeableBitmap;
                 }
 
-                Guid iidTexture2D = IID_ID3D11Texture2D;
-                int hrQuery = Marshal.QueryInterface(pSurfaceAbi, ref iidTexture2D, out IntPtr pTexture2D);
-                if (hrQuery != 0 || pTexture2D == IntPtr.Zero)
+                if (pSurfaceUnknown == IntPtr.Zero)
                 {
                     frame.Dispose();
                     return _writeableBitmap;
+                }
+
+                IntPtr pTexture2D = IntPtr.Zero;
+                try
+                {
+                    Guid iidTexture2D = IID_ID3D11Texture2D;
+                    int hrQuery = Marshal.QueryInterface(pSurfaceUnknown, ref iidTexture2D, out pTexture2D);
+                    if (hrQuery != 0 || pTexture2D == IntPtr.Zero)
+                    {
+                        frame.Dispose();
+                        return _writeableBitmap;
+                    }
+                }
+                finally
+                {
+                    Marshal.Release(pSurfaceUnknown);
                 }
 
                 using var srcTexture = new ID3D11Texture2D(pTexture2D);
@@ -394,7 +421,9 @@ namespace RejiDisplay.Services
             }
             catch (Exception ex)
             {
-                Logger.Log($"[WgcCaptureEngine] CaptureFrame exception: {ex.Message}");
+                InitError = $"CaptureFrame exception: {ex.Message}";
+                Logger.LogError("[WgcCaptureEngine] CaptureFrame exception, shutting down WGC engine and falling back", ex);
+                Dispose();
                 return _writeableBitmap;
             }
             finally

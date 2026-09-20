@@ -318,11 +318,13 @@ namespace RejiDisplay.Services
             }
             catch (Exception ex)
             {
-                Logger.LogError("[DxgiCaptureEngine] Frame process error", ex);
+                InitError = $"Frame process exception: {ex.Message}";
+                Logger.LogError("[DxgiCaptureEngine] Frame process exception, shutting down DXGI engine and falling back", ex);
+                Dispose();
             }
             finally
             {
-                _duplication.ReleaseFrame();
+                try { _duplication?.ReleaseFrame(); } catch { }
             }
 
             return null;

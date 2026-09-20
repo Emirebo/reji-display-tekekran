@@ -4,6 +4,7 @@ namespace RejiDisplay.Models
     {
         Fit,     // Preserves aspect ratio, letterbox if needed (WPF Uniform)
         Fill,    // Preserves aspect ratio, crops if needed (WPF UniformToFill)
-        Stretch  // Fills entire display without preserving aspect ratio (WPF Fill)
+        Stretch, // Fills entire display without preserving aspect ratio (WPF Fill)
+        Custom   // User zoom and offset layout
     }
 }

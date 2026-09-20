@@ -38,8 +38,24 @@ namespace RejiDisplay
                 string logDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RejiDisplay", "Logs");
                 Directory.CreateDirectory(logDir);
                 string logFile = Path.Combine(logDir, "crash.log");
-                string logMessage = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Unhandled Exception:\n{ex}\n----------------------------------------\n";
-                File.AppendAllText(logFile, logMessage);
+
+                var sb = new System.Text.StringBuilder();
+                sb.AppendLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Unhandled Exception:");
+
+                Exception? current = ex;
+                int depth = 0;
+                while (current != null)
+                {
+                    sb.AppendLine($"=== Exception Level {depth}: {current.GetType().FullName} ===");
+                    sb.AppendLine($"Message: {current.Message}");
+                    sb.AppendLine($"Source: {current.Source}");
+                    sb.AppendLine($"StackTrace:\n{current.StackTrace}");
+                    current = current.InnerException;
+                    depth++;
+                }
+                sb.AppendLine("----------------------------------------\n");
+
+                File.AppendAllText(logFile, sb.ToString());
             }
             catch
             {

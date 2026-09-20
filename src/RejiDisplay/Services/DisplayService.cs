@@ -48,6 +48,24 @@ namespace RejiDisplay.Services
                         // Default to 96 if API unavailable
                     }
 
+                    int refreshRate = 60;
+                    try
+                    {
+                        var devMode = new NativeMethods.DEVMODE();
+                        devMode.dmSize = (ushort)Marshal.SizeOf(typeof(NativeMethods.DEVMODE));
+                        if (NativeMethods.EnumDisplaySettings(deviceName, NativeMethods.ENUM_CURRENT_SETTINGS, ref devMode))
+                        {
+                            if (devMode.dmDisplayFrequency > 0)
+                            {
+                                refreshRate = (int)devMode.dmDisplayFrequency;
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // Default to 60 if API query fails
+                    }
+
                     int width = mi.rcMonitor.Width;
                     int height = mi.rcMonitor.Height;
 
@@ -65,7 +83,8 @@ namespace RejiDisplay.Services
                         Height = height,
                         IsPrimary = isPrimary,
                         DpiX = dpiX,
-                        DpiY = dpiY
+                        DpiY = dpiY,
+                        RefreshRate = refreshRate
                     });
 
                     index++;
@@ -157,7 +176,8 @@ namespace RejiDisplay.Services
 
         /// <summary>
         /// Filters assignable presentation capture source displays (Display 2 role).
-        /// Rule 1: Exclude Master LED Output display (prevents recursive capture loop).
+        /// Rule 1: Exclude Primary operator control display (Display 1 role).
+        /// Rule 2: Exclude Master LED Output display (prevents recursive capture loop).
         /// </summary>
         public List<DisplayInfo> GetAssignablePresentationSources(
             IEnumerable<DisplayInfo> allDisplays,

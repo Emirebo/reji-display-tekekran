@@ -8,17 +8,26 @@
         Topmost="True"
         Background="Black"
         WindowStartupLocation="Manual">
-    <Grid Background="Black">
-        <!-- Displayed Media Image -->
-        <Image x:Name="MediaImage"
-               HorizontalAlignment="Center"
-               VerticalAlignment="Center"
-               Stretch="Uniform"
-               Visibility="Visible" />
+    <Canvas x:Name="MainCanvas" Background="Black" ClipToBounds="True">
+        <!-- Calibrated Signal Viewport Container -->
+        <Canvas x:Name="ViewportCanvas" Background="Black" ClipToBounds="True">
+            <Image x:Name="MediaImage" Stretch="Fill" Visibility="Collapsed"/>
+            <MediaElement x:Name="MediaVideo"
+                          Stretch="Fill"
+                          LoadedBehavior="Manual"
+                          UnloadedBehavior="Manual"
+                          Visibility="Collapsed"
+                          MediaEnded="MediaVideo_MediaEnded"
+                          MediaOpened="MediaVideo_MediaOpened"
+                          MediaFailed="MediaVideo_MediaFailed"/>
+        </Canvas>
 
-        <!-- Blackout Layer -->
+        <!-- Live Blackout Overlay -->
         <Grid x:Name="BlackoutOverlay"
               Background="Black"
-              Visibility="Collapsed" />
-    </Grid>
+              Visibility="Collapsed"
+              Canvas.Left="0" Canvas.Top="0"/>
+    </Canvas>
 </Window>
+
+

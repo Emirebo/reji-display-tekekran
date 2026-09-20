@@ -1,364 +1,738 @@
 <Window x:Class="RejiDisplay.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="RejiDisplay v0.3 — Single Master Output &amp; Live Presentation Composer"
-        Height="850" Width="1200"
-        MinHeight="750" MinWidth="1050"
+        Title="RejiDisplay v0.3 — Single Master LED Controller"
+        Height="960" Width="1380"
+        MinHeight="800" MinWidth="1100"
         WindowStartupLocation="CenterScreen"
-        Background="#0F172A"
-        Foreground="#F8FAFC">
+        Background="#0B0F19"
+        Foreground="#F9FAFC">
 
-    <Window.Resources>
-        <!-- Dark Theme Colors -->
-        <SolidColorBrush x:Key="CardBackground" Color="#1E293B"/>
-        <SolidColorBrush x:Key="CardBorder" Color="#334155"/>
-        <SolidColorBrush x:Key="AccentBlue" Color="#0EA5E9"/>
-        <SolidColorBrush x:Key="AccentGreen" Color="#10B981"/>
-        <SolidColorBrush x:Key="AccentRed" Color="#EF4444"/>
-        <SolidColorBrush x:Key="AccentAmber" Color="#F59E0B"/>
-        <SolidColorBrush x:Key="TextPrimary" Color="#F8FAFC"/>
-        <SolidColorBrush x:Key="TextSecondary" Color="#94A3B8"/>
-
-        <!-- Button Styles -->
-        <Style x:Key="PrimaryBtnStyle" TargetType="Button">
-            <Setter Property="Background" Value="#0EA5E9"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="FontSize" Value="13"/>
-            <Setter Property="Padding" Value="14,8"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="6" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#38BDF8"/>
-                            </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="border" Property="Background" Value="#475569"/>
-                                <Setter Property="Foreground" Value="#94A3B8"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style x:Key="TakeBtnStyle" TargetType="Button" BasedOn="{StaticResource PrimaryBtnStyle}">
-            <Setter Property="Background" Value="#10B981"/>
-            <Setter Property="FontSize" Value="16"/>
-            <Setter Property="Padding" Value="24,12"/>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#34D399"/>
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-
-        <Style x:Key="DangerBtnStyle" TargetType="Button" BasedOn="{StaticResource PrimaryBtnStyle}">
-            <Setter Property="Background" Value="#EF4444"/>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#F87171"/>
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-
-        <Style x:Key="WarningBtnStyle" TargetType="Button" BasedOn="{StaticResource PrimaryBtnStyle}">
-            <Setter Property="Background" Value="#F59E0B"/>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#FBBF24"/>
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-
-        <Style x:Key="SecondaryBtnStyle" TargetType="Button" BasedOn="{StaticResource PrimaryBtnStyle}">
-            <Setter Property="Background" Value="#334155"/>
-            <Setter Property="Foreground" Value="#E2E8F0"/>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#475569"/>
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-
-        <Style x:Key="ComboBoxStyle" TargetType="ComboBox">
-            <Setter Property="Background" Value="#0F172A"/>
-            <Setter Property="Foreground" Value="#F8FAFC"/>
-            <Setter Property="BorderBrush" Value="#475569"/>
-            <Setter Property="Padding" Value="8,5"/>
-            <Setter Property="FontSize" Value="13"/>
-        </Style>
-    </Window.Resources>
-
-    <Grid Margin="18">
+    <Grid Margin="12">
         <Grid.RowDefinitions>
-            <!-- 0: Header -->
+            <!-- 0: Header Bar -->
             <RowDefinition Height="Auto"/>
-            <!-- 1: Display Role Assignment Toolbar -->
+            <!-- 1: Master Preview Section (Proportional 4301x1720 bar) -->
             <RowDefinition Height="Auto"/>
-            <!-- 2: Unified Master Layout Live Preview -->
+            <!-- 2: Broadcast Actions Bar -->
             <RowDefinition Height="Auto"/>
-            <!-- 3: Action Bar (TAKE & Master Controls) -->
-            <RowDefinition Height="Auto"/>
-            <!-- 4: Region Content Cards (LEFT & RIGHT) -->
+            <!-- 3: Symmetrical Media Control Panels (SOL LED & SAĞ LED) -->
             <RowDefinition Height="*"/>
-            <!-- 5: Footer Status Bar -->
+            <!-- 4: Footer Bar -->
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- 0. HEADER BAR -->
-        <Grid Grid.Row="0" Margin="0,0,0,12">
+        <Grid Grid.Row="0" Margin="0,0,0,10">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
-            <StackPanel Grid.Column="0">
-                <TextBlock Text="RejiDisplay v0.3 — Single Master Output &amp; Live Presentation Composer" FontSize="22" FontWeight="ExtraBold" Foreground="{StaticResource TextPrimary}"/>
-                <TextBlock Text="Logical Master Canvas: 4301 × 1720 px | GPU Presentation Capture &amp; Live Composition Engine" FontSize="12" Foreground="{StaticResource TextSecondary}" Margin="0,2,0,0"/>
+
+            <!-- App Title & Subtitle -->
+            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Background="#0284C7" CornerRadius="6" Width="28" Height="28" Margin="0,0,10,0" VerticalAlignment="Center">
+                        <TextBlock Text="📺" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <TextBlock Text="RejiDisplay v0.3" FontSize="20" FontWeight="ExtraBold" Foreground="#F9FAFC"/>
+                    <Border Background="#0F172A" BorderBrush="#0EA5E9" BorderThickness="1" CornerRadius="4" Padding="6,2" Margin="12,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="SINGLE MASTER OUTPUT" FontSize="10" FontWeight="Bold" Foreground="#38BDF8"/>
+                    </Border>
+                </StackPanel>
+                <TextBlock Text="Single Master Output &amp; Live Presentation Composer" FontSize="11" Foreground="#94A3B8" Margin="38,2,0,0"/>
             </StackPanel>
-            <StackPanel Grid.Column="1" Orientation="Horizontal">
-                <Button x:Name="BtnToggleSimulation" Content="🧪 SİMÜLASYON MODU" Style="{StaticResource SecondaryBtnStyle}" Click="BtnToggleSimulation_Click" Margin="0,0,8,0"/>
-                <Button Content="🔍 EKRANLARI NUMARALANDIR" Style="{StaticResource SecondaryBtnStyle}" Click="BtnIdentify_Click" Margin="0,0,8,0"/>
-                <Button Content="🛑 MASTER ÇIKIŞI DURDUR" Style="{StaticResource DangerBtnStyle}" Click="BtnStopMaster_Click"/>
+
+            <!-- Status Badges & Settings Trigger Button -->
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <!-- Master Output Badge -->
+                <Border x:Name="BadgeHeaderMaster" Background="#0F172A" BorderBrush="#1E293B" BorderThickness="1" CornerRadius="20" Padding="10,4" Margin="0,0,8,0">
+                    <StackPanel Orientation="Horizontal">
+                        <Ellipse x:Name="DotHeaderMaster" Width="8" Height="8" Fill="#64748B" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="MASTER OUTPUT: " FontSize="11" FontWeight="Bold" Foreground="#94A3B8"/>
+                        <TextBlock x:Name="TxtHeaderMaster" Text="PASİF" FontSize="11" FontWeight="Bold" Foreground="#94A3B8"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Presentation Capture Badge -->
+                <Border x:Name="BadgeHeaderCapture" Background="#0F172A" BorderBrush="#1E293B" BorderThickness="1" CornerRadius="20" Padding="10,4" Margin="0,0,12,0">
+                    <StackPanel Orientation="Horizontal">
+                        <Ellipse x:Name="DotHeaderCapture" Width="8" Height="8" Fill="#64748B" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="SUNUM YAKALAMA: " FontSize="11" FontWeight="Bold" Foreground="#94A3B8"/>
+                        <TextBlock x:Name="TxtHeaderCapture" Text="BEKLİYOR" FontSize="11" FontWeight="Bold" Foreground="#94A3B8"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Live FPS Readout -->
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,14,0">
+                    <TextBlock Text="FPS " FontSize="11" Foreground="#94A3B8" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="TxtCaptureFps" Text="--" FontSize="14" FontWeight="Bold" Foreground="#38BDF8" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- Settings Button -->
+                <Button x:Name="BtnOpenSettings" Content="⚙️ AYARLAR" Style="{StaticResource SecondaryBtnStyle}" Click="BtnOpenSettings_Click" Padding="12,6"/>
             </StackPanel>
         </Grid>
 
-        <!-- 1. DISPLAY ROLE ASSIGNMENT TOOLBAR -->
-        <Border Grid.Row="1" Background="{StaticResource CardBackground}" BorderBrush="{StaticResource CardBorder}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <!-- Display 1 Role -->
-                    <ColumnDefinition Width="1.1*"/>
-                    <!-- Display 2 Role -->
-                    <ColumnDefinition Width="1.4*"/>
-                    <!-- Display 3 Role -->
-                    <ColumnDefinition Width="1.4*"/>
-                </Grid.ColumnDefinitions>
-
-                <!-- DISPLAY 1: CONTROL UI -->
-                <StackPanel Grid.Column="0" Margin="0,0,10,0">
-                    <TextBlock Text="DISPLAY 1 — KONTROL EKRANI:" FontSize="11" FontWeight="Bold" Foreground="#38BDF8"/>
-                    <TextBlock x:Name="TxtControlDisplayLabel" Text="Birincil Ekran (Operatör Paneli)" FontSize="13" Foreground="{StaticResource TextPrimary}" Margin="0,4,0,0"/>
-                </StackPanel>
-
-                <!-- DISPLAY 2: PRESENTATION SOURCE -->
-                <StackPanel Grid.Column="1" Margin="0,0,10,0">
-                    <TextBlock Text="DISPLAY 2 — SUNUM EKRANI (PowerPoint Canlı Yakalama):" FontSize="11" FontWeight="Bold" Foreground="#34D399"/>
-                    <ComboBox x:Name="CmbPresentationSource" Style="{StaticResource ComboBoxStyle}" Margin="0,4,0,0" SelectionChanged="CmbPresentationSource_SelectionChanged"/>
-                </StackPanel>
-
-                <!-- DISPLAY 3: MASTER LED OUTPUT -->
-                <StackPanel Grid.Column="2">
-                    <TextBlock Text="DISPLAY 3 — MASTER LED ÇIKIŞI (NovaStar VX2000 Pro):" FontSize="11" FontWeight="Bold" Foreground="#F59E0B"/>
-                    <ComboBox x:Name="CmbMasterOutput" Style="{StaticResource ComboBoxStyle}" Margin="0,4,0,0" SelectionChanged="CmbMasterOutput_SelectionChanged"/>
-                </StackPanel>
-            </Grid>
-        </Border>
-
-        <!-- 2. UNIFIED MASTER LAYOUT LIVE PREVIEW (4301 x 1720 Aspect Ratio Container) -->
-        <Border Grid.Row="2" Background="#020617" BorderBrush="#1E293B" BorderThickness="2" CornerRadius="10" Padding="10" Margin="0,0,0,12">
+        <!-- 1. UNIFIED MASTER PREVIEW (4301 × 1720 Proportional Bar) -->
+        <Border Grid.Row="1" Background="#0F172A" BorderBrush="#1E293B" BorderThickness="1" CornerRadius="8" Padding="10" Margin="0,0,0,10">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="140"/>
-                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <!-- Preview Header -->
+                <!-- Card Header -->
                 <Grid Grid.Row="0" Margin="0,0,0,6">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="🖥️ BİRLEŞİK LED MASTER DÜZEN ÖNİZLEMESİ (4301 × 1720)" FontSize="13" FontWeight="Bold" Foreground="#38BDF8"/>
-                        <TextBlock x:Name="TxtMasterStatusBadge" Text="[ DRAFT PREVIEW ]" FontSize="12" FontWeight="Bold" Foreground="#F59E0B" Margin="10,0,0,0"/>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="🖥️ BİRLEŞİK LED GÖRÜNÜMÜ (4301 × 1720)" FontSize="12" FontWeight="Bold" Foreground="#38BDF8"/>
+                        <Border x:Name="BadgeMasterPreviewState" Background="#F59E0B" CornerRadius="4" Padding="6,2" Margin="10,0,0,0">
+                            <TextBlock x:Name="TxtMasterStatusBadge" Text="[ DRAFT PREVIEW ]" FontSize="10" FontWeight="Bold" Foreground="White"/>
+                        </Border>
                     </StackPanel>
-                    <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
-                        <TextBlock x:Name="TxtCaptureFps" Text="FPS: -- | MODE: IDLE" FontSize="11" Foreground="#94A3B8"/>
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <TextBlock Text="Orta Ekran Y-Offset: " FontSize="11" Foreground="#94A3B8"/>
+                        <TextBlock x:Name="TxtMiddleYOffsetPreview" Text="172 px" FontSize="11" FontWeight="Bold" Foreground="#38BDF8"/>
+                        <Button Content="✏️ Düzenle" Style="{StaticResource SecondaryBtnStyle}" Click="BtnOpenSettings_Click" Padding="6,2" FontSize="10" Margin="8,0,0,0"/>
                     </StackPanel>
                 </Grid>
 
                 <!-- Proportional 3-Region Canvas Container -->
-                <Grid Grid.Row="1" Background="#0B0F19">
+                <Grid Grid.Row="1" Background="#020617">
                     <Grid.ColumnDefinitions>
-                        <!-- Left: 860 width (approx 20%) -->
                         <ColumnDefinition Width="860*"/>
-                        <ColumnDefinition Width="4"/>
-                        <!-- Middle: 2581 width (approx 60%) -->
                         <ColumnDefinition Width="2581*"/>
-                        <ColumnDefinition Width="4"/>
-                        <!-- Right: 860 width (approx 20%) -->
                         <ColumnDefinition Width="860*"/>
                     </Grid.ColumnDefinitions>
 
-                    <!-- LEFT PREVIEW REGION -->
-                    <Border Grid.Column="0" Background="#111827" BorderBrush="#374151" BorderThickness="1" CornerRadius="4" ClipToBounds="True">
+                    <!-- LEFT REGION PREVIEW -->
+                    <Border Grid.Column="0" BorderBrush="#1E293B" BorderThickness="1" Margin="2" CornerRadius="4" ClipToBounds="True" Background="#0A0F1D">
                         <Grid>
-                            <Image x:Name="ImgLeftPreview" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            <TextBlock x:Name="TxtLeftDraftPrompt" Text="LEFT (860x1720)" FontSize="11" Foreground="#4B5563" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            <Border HorizontalAlignment="Left" VerticalAlignment="Top" Background="#1E293B" CornerRadius="2" Padding="4,2" Margin="4">
-                                <TextBlock Text="LEFT LED" FontSize="9" FontWeight="Bold" Foreground="#38BDF8"/>
+                            <Canvas x:Name="CanvasLeftMasterViewport">
+                                <Image x:Name="ImgLeftMasterPreview" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Canvas>
+                            <Border VerticalAlignment="Bottom" HorizontalAlignment="Left" Background="#D90F172A" CornerRadius="4" Padding="6,2" Margin="6">
+                                <TextBlock Text="SOL LED (860 × 1720)" FontSize="10" FontWeight="Bold" Foreground="#94A3B8"/>
                             </Border>
                         </Grid>
                     </Border>
 
-                    <!-- MIDDLE PREVIEW REGION (LIVE SUNUM STREAM) -->
-                    <Border Grid.Column="2" Background="#0F172A" BorderBrush="#059669" BorderThickness="1" CornerRadius="4" ClipToBounds="True">
+                    <!-- MIDDLE REGION PREVIEW (PRESENTATION) -->
+                    <Border Grid.Column="1" BorderBrush="#0EA5E9" BorderThickness="2" Margin="2" CornerRadius="4" ClipToBounds="True" Background="#0A0F1D">
                         <Grid>
-                            <Image x:Name="ImgMiddlePreview" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            <TextBlock x:Name="TxtMiddleDraftPrompt" Text="DISPLAY 2 CANLI SUNUM YAKALAMA (2581x1376)" FontSize="11" Foreground="#047857" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            <Border HorizontalAlignment="Left" VerticalAlignment="Top" Background="#064E3B" CornerRadius="2" Padding="4,2" Margin="4">
-                                <TextBlock Text="MIDDLE (LIVE)" FontSize="9" FontWeight="Bold" Foreground="#34D399"/>
+                            <Canvas x:Name="CanvasMiddlePreviewViewport">
+                                <Image x:Name="ImgMiddleMasterPreview" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Canvas>
+                            <Border VerticalAlignment="Bottom" HorizontalAlignment="Center" Background="#D90F172A" CornerRadius="4" Padding="8,3" Margin="6">
+                                <TextBlock Text="ORTA EKRAN (SUNUM) — 2581 × 1376 (Y: 172)" FontSize="10" FontWeight="Bold" Foreground="#38BDF8"/>
                             </Border>
                         </Grid>
                     </Border>
 
-                    <!-- RIGHT PREVIEW REGION -->
-                    <Border Grid.Column="4" Background="#111827" BorderBrush="#374151" BorderThickness="1" CornerRadius="4" ClipToBounds="True">
+                    <!-- RIGHT REGION PREVIEW -->
+                    <Border Grid.Column="2" BorderBrush="#1E293B" BorderThickness="1" Margin="2" CornerRadius="4" ClipToBounds="True" Background="#0A0F1D">
                         <Grid>
-                            <Image x:Name="ImgRightPreview" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            <TextBlock x:Name="TxtRightDraftPrompt" Text="RIGHT (860x1720)" FontSize="11" Foreground="#4B5563" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            <Border HorizontalAlignment="Right" VerticalAlignment="Top" Background="#1E293B" CornerRadius="2" Padding="4,2" Margin="4">
-                                <TextBlock Text="RIGHT LED" FontSize="9" FontWeight="Bold" Foreground="#38BDF8"/>
+                            <Canvas x:Name="CanvasRightMasterViewport">
+                                <Image x:Name="ImgRightMasterPreview" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Canvas>
+                            <Border VerticalAlignment="Bottom" HorizontalAlignment="Right" Background="#D90F172A" CornerRadius="4" Padding="6,2" Margin="6">
+                                <TextBlock Text="SAĞ LED (860 × 1720)" FontSize="10" FontWeight="Bold" Foreground="#94A3B8"/>
                             </Border>
                         </Grid>
                     </Border>
                 </Grid>
+            </Grid>
+        </Border>
 
-                <!-- Calibration Controls -->
-                <Grid Grid.Row="2" Margin="0,6,0,0">
+        <!-- 2. BROADCAST ACTIONS BAR -->
+        <Grid Grid.Row="2" Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*"/>
+                <ColumnDefinition Width="1.5*"/>
+                <ColumnDefinition Width="1.5*"/>
+                <ColumnDefinition Width="1.5*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- TAKE / YAYINA AL Button -->
+            <Button Grid.Column="0" x:Name="BtnTake" Style="{StaticResource PrimaryGreenBtnStyle}" Click="BtnTake_Click" Margin="0,0,8,0" Height="58">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="🎬" FontSize="20" Margin="0,0,10,0"/>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="TAKE / YAYINA AL" FontSize="15" FontWeight="ExtraBold" Foreground="White"/>
+                        <TextBlock Text="Draft içerikleri Master'a uygula" FontSize="10" Foreground="#D1FAE5"/>
+                    </StackPanel>
+                </StackPanel>
+            </Button>
+
+            <!-- MASTER BLACKOUT Button -->
+            <Button Grid.Column="1" x:Name="BtnMasterBlackout" Style="{StaticResource PrimaryRedBtnStyle}" Click="BtnMasterBlackout_Click" Margin="0,0,8,0" Height="58">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="🛑" FontSize="18" Margin="0,0,8,0"/>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="MASTER BLACKOUT" FontSize="13" FontWeight="Bold" Foreground="White"/>
+                        <TextBlock Text="Tüm ekranı karart" FontSize="10" Foreground="#FEE2E2"/>
+                    </StackPanel>
+                </StackPanel>
+            </Button>
+
+            <!-- START / STOP MASTER OUTPUT Toggle Button -->
+            <Button Grid.Column="2" x:Name="BtnStartMaster" Style="{StaticResource PrimaryBlueBtnStyle}" Click="BtnStartMaster_Click" Margin="0,0,8,0" Height="58">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock x:Name="TxtStartMasterIcon" Text="▶" FontSize="18" Margin="0,0,8,0"/>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock x:Name="TxtStartMasterTitle" Text="MASTER ÇIKIŞINI BAŞLAT" FontSize="12" FontWeight="Bold" Foreground="White"/>
+                        <TextBlock x:Name="TxtStartMasterSub" Text="Seçilen ekranda yayını aç" FontSize="10" Foreground="#E0F2FE"/>
+                    </StackPanel>
+                </StackPanel>
+            </Button>
+
+            <!-- CANLI DURUM Panel -->
+            <Border Grid.Column="3" Background="#0F172A" BorderBrush="#1E293B" BorderThickness="1" CornerRadius="6" Padding="10,6">
+                <Grid>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" Text="Middle Ekran Dikey Kalibrasyonu (Y-Offset):" FontSize="11" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                    <Slider Grid.Column="1" x:Name="SliderMiddleYOffset" Minimum="0" Maximum="344" Value="172" TickFrequency="1" IsSnapToTickEnabled="True" VerticalAlignment="Center" ValueChanged="SliderMiddleYOffset_ValueChanged"/>
-                    <TextBlock Grid.Column="2" x:Name="TxtMiddleYOffset" Text="172 px (Ortalanmış)" FontSize="11" FontWeight="Bold" Foreground="#38BDF8" VerticalAlignment="Center" Margin="10,0,0,0"/>
-                </Grid>
-            </Grid>
-        </Border>
 
-        <!-- 3. ACTION BAR (TAKE & MASTER CONTROLS) -->
-        <Grid Grid.Row="3" Margin="0,0,0,12">
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="CANLI DURUM" FontSize="10" FontWeight="Bold" Foreground="#94A3B8"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                            <Ellipse x:Name="DotLiveStatusOutput" Width="6" Height="6" Fill="#64748B" Margin="0,0,4,0"/>
+                            <TextBlock x:Name="TxtLiveStatusOutput" Text="Master Output Kapalı" FontSize="10" Foreground="#94A3B8"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                            <Ellipse x:Name="DotLiveStatusCapture" Width="6" Height="6" Fill="#64748B" Margin="0,0,4,0"/>
+                            <TextBlock x:Name="TxtLiveStatusCapture" Text="Sunum Yakalama Bekliyor" FontSize="10" Foreground="#94A3B8"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right">
+                        <TextBlock x:Name="TxtLiveStatusFps" Text="--" FontSize="20" FontWeight="ExtraBold" Foreground="#38BDF8" HorizontalAlignment="Right"/>
+                        <TextBlock Text="FPS" FontSize="9" FontWeight="Bold" Foreground="#94A3B8" HorizontalAlignment="Right"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- 3. SYMMETRICAL MEDIA CONTROL PANELS (LEFT & RIGHT LED) -->
+        <Grid Grid.Row="3" Margin="0,0,0,10">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="2*"/>
-                <ColumnDefinition Width="10"/>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="10"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <!-- PROMINENT TAKE BUTTON -->
-            <Button Grid.Column="0" x:Name="BtnTake" Content="🎬 TAKE / STAGE TO LIVE (MASTER YAYINA AL)" Style="{StaticResource TakeBtnStyle}" Click="BtnTake_Click"/>
-            <Button Grid.Column="2" x:Name="BtnMasterBlackout" Content="⚫ MASTER SİYAH EKRAN" Style="{StaticResource WarningBtnStyle}" Click="BtnMasterBlackout_Click"/>
-            <Button Grid.Column="4" x:Name="BtnStartMaster" Content="▶ MASTER ÇIKIŞI BAŞLAT" Style="{StaticResource PrimaryBtnStyle}" Click="BtnStartMaster_Click"/>
-        </Grid>
-
-        <!-- 4. REGION CONTENT CARDS (LEFT & RIGHT DRAFT EDITORS) -->
-        <Grid Grid.Row="4" Margin="0,0,0,12">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="12"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-
-            <!-- LEFT REGION CARD -->
-            <Border Grid.Column="0" Background="{StaticResource CardBackground}" BorderBrush="{StaticResource CardBorder}" BorderThickness="1" CornerRadius="10" Padding="14">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-
-                    <!-- Header -->
-                    <Grid Grid.Row="0" Margin="0,0,0,8">
-                        <TextBlock Text="LEFT LED GÖRSELİ (860×1720)" FontSize="15" FontWeight="Bold" Foreground="#38BDF8"/>
-                    </Grid>
-
-                    <!-- Drop Zone -->
-                    <Border Grid.Row="1" x:Name="DropZoneLeft" Background="#0F172A" BorderBrush="#334155" BorderThickness="2" CornerRadius="6"
-                            AllowDrop="True" DragOver="DropZone_DragOver" Drop="DropZoneLeft_Drop" Padding="10">
-                        <Grid>
-                            <StackPanel x:Name="PanelLeftDropPrompt" VerticalAlignment="Center" HorizontalAlignment="Center">
-                                <TextBlock Text="🖼️" FontSize="28" HorizontalAlignment="Center" Margin="0,0,0,4"/>
-                                <TextBlock Text="Görseli Buraya Sürükleyin" FontWeight="Bold" FontSize="13" HorizontalAlignment="Center" Foreground="{StaticResource TextPrimary}"/>
-                                <TextBlock Text="PNG, JPG, WEBP" FontSize="11" HorizontalAlignment="Center" Foreground="{StaticResource TextSecondary}"/>
+            <!-- SOL LED PANEL -->
+            <Border Grid.Column="0" Background="#0F172A" BorderBrush="#1E293B" BorderThickness="1" CornerRadius="8" Padding="12">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <!-- Header -->
+                        <Grid Margin="0,0,0,10">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="SOL LED — Medya Kontrolü" FontSize="13" FontWeight="Bold" Foreground="#38BDF8"/>
+                                <Border Background="#10B981" CornerRadius="4" Padding="5,1" Margin="8,0,0,0">
+                                    <TextBlock Text="🟢 LIVE" FontSize="9" FontWeight="Bold" Foreground="White"/>
+                                </Border>
                             </StackPanel>
-                            <Image x:Name="ImgLeftCardPreview" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center" Stretch="Uniform" MaxHeight="120"/>
                         </Grid>
-                    </Border>
 
-                    <!-- Scale Controls -->
-                    <StackPanel Grid.Row="2" Margin="0,8,0,8">
-                        <TextBlock x:Name="TxtLeftMediaPath" Text="Seçili: (Henüz yok)" FontSize="11" Foreground="{StaticResource TextSecondary}" TextTrimming="CharacterEllipsis"/>
-                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                            <RadioButton x:Name="RadioLeftFit" Content="Fit" GroupName="LeftScale" IsChecked="True" Foreground="#F8FAFC" Margin="0,0,10,0" Checked="RadioLeftScale_Checked"/>
-                            <RadioButton x:Name="RadioLeftFill" Content="Fill" GroupName="LeftScale" Foreground="#F8FAFC" Margin="0,0,10,0" Checked="RadioLeftScale_Checked"/>
-                            <RadioButton x:Name="RadioLeftStretch" Content="Stretch" GroupName="LeftScale" Foreground="#F8FAFC" Checked="RadioLeftScale_Checked"/>
+                        <!-- Source Type Tabs -->
+                        <UniformGrid Columns="4" Margin="0,0,0,10">
+                            <RadioButton x:Name="RadLeftSourceImage" Content="📁 Dosya" Style="{StaticResource SourceTabBtnStyle}" IsChecked="True" Checked="SourceTab_Checked"/>
+                            <RadioButton x:Name="RadLeftSourceVideo" Content="📹 Video" Style="{StaticResource SourceTabBtnStyle}" Checked="SourceTab_Checked"/>
+                            <RadioButton x:Name="RadLeftSourceWeb" Content="🌐 Web Sitesi" Style="{StaticResource SourceTabBtnStyle}" Checked="SourceTab_Checked"/>
+                            <RadioButton x:Name="RadLeftSourceTest" Content="📋 Test Deseni" Style="{StaticResource SourceTabBtnStyle}" Checked="SourceTab_Checked"/>
+                        </UniformGrid>
+
+                        <!-- Active Source Content Area -->
+                        <!-- 1. Dosya (Image) Panel -->
+                        <StackPanel x:Name="PanelLeftImageContent" Visibility="Visible">
+                            <Border Background="#1E293B" BorderBrush="#334155" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,10">
+                                <Grid x:Name="DropZoneLeft" AllowDrop="True" DragOver="DropZone_DragOver" Drop="DropZoneLeft_Drop">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Thumbnail -->
+                                    <Border Grid.Column="0" Height="70" Background="#0F172A" CornerRadius="4" ClipToBounds="True">
+                                        <Grid>
+                                            <Canvas x:Name="CanvasLeftPreviewViewport">
+                                                <Image x:Name="ImgLeftPreview" Stretch="Uniform"/>
+                                            </Canvas>
+                                            <StackPanel x:Name="PanelLeftDropPrompt" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                <TextBlock Text="📁" FontSize="16" HorizontalAlignment="Center"/>
+                                                <TextBlock Text="Sürükle" FontSize="9" Foreground="#94A3B8" HorizontalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- Details & Action Buttons -->
+                                    <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+                                        <TextBlock x:Name="TxtLeftMediaPath" Text="Görsel Seçilmedi" FontSize="12" FontWeight="Bold" Foreground="#F9FAFC" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Text="1920 × 1080 | Image File" FontSize="10" Foreground="#94A3B8" Margin="0,2,0,8"/>
+
+                                        <StackPanel Orientation="Horizontal">
+                                            <Button Content="📁 Dosya Seç" Style="{StaticResource SecondaryBtnStyle}" Click="BtnLeftChooseMedia_Click" Padding="8,4" FontSize="11" Margin="0,0,6,0"/>
+                                            <Button x:Name="BtnLeftClear" Content="🗑️ Temizle" Style="{StaticResource SecondaryBtnStyle}" Click="BtnLeftChooseMedia_Click" Padding="8,4" FontSize="11"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
                         </StackPanel>
-                    </StackPanel>
 
-                    <!-- Blackout Button -->
-                    <Button Grid.Row="3" x:Name="BtnLeftBlack" Content="⚫ LEFT Blackout" Style="{StaticResource SecondaryBtnStyle}" Click="BtnLeftBlack_Click"/>
-                </Grid>
+                        <!-- 2. Video Panel -->
+                        <StackPanel x:Name="PanelLeftVideoContent" Visibility="Collapsed">
+                            <Border Background="#1E293B" BorderBrush="#334155" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,10">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="80"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Height="55" Background="#0F172A" CornerRadius="4" ClipToBounds="True">
+                                            <MediaElement x:Name="MediaLeftPreviewVideo" LoadedBehavior="Manual" UnloadedBehavior="Manual" MediaOpened="MediaLeftPreviewVideo_MediaOpened"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock Text="turkiye-tanitim.mp4" FontSize="12" FontWeight="Bold" Foreground="#F9FAFC"/>
+                                            <TextBlock Text="1920 × 1080 | 45.2 MB | MP4" FontSize="10" Foreground="#94A3B8"/>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <!-- Video Scrubber & Controls -->
+                                    <Grid x:Name="PanelLeftVideoControls">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Button Content="▶" Style="{StaticResource SecondaryBtnStyle}" Click="BtnLeftPlay_Click" Padding="8,3" Margin="0,0,4,0"/>
+                                        <Button Grid.Column="1" Content="⏹" Style="{StaticResource SecondaryBtnStyle}" Click="BtnLeftStopVideo_Click" Padding="8,3" Margin="0,0,6,0"/>
+                                        <Slider Grid.Column="2" x:Name="SliderLeftVideoPosition" VerticalAlignment="Center" ValueChanged="SliderLeftVideoPosition_ValueChanged"/>
+                                        <CheckBox Grid.Column="3" x:Name="ChkLeftMute" Content="🔊" VerticalAlignment="Center" Margin="6,0" Click="ChkLeftMute_Click"/>
+                                        <Slider Grid.Column="4" Width="60" Value="100" VerticalAlignment="Center" ValueChanged="SliderLeftVolume_ValueChanged"/>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- 3. Web Sitesi Panel -->
+                        <StackPanel x:Name="PanelLeftWebContent" Visibility="Collapsed">
+                            <Border Background="#1E293B" BorderBrush="#334155" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,10">
+                                <StackPanel>
+                                    <TextBlock Text="Web Adresi (URL):" FontSize="11" Foreground="#94A3B8" Margin="0,0,0,4"/>
+                                    <Grid Margin="0,0,0,6">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox x:Name="TxtLeftWebUrl" Text="https://canli.belediye.gov.tr" Padding="6,5"/>
+                                        <Button Grid.Column="1" Content="🌐 Git" Style="{StaticResource SecondaryBtnStyle}" Click="BtnLeftWebGo_Click" Padding="10,5" Margin="6,0,0,0"/>
+                                    </Grid>
+                                    <TextBlock x:Name="TxtLeftWebStatus" Text="Aktif Web Adresi: Gönderilmedi" FontSize="10" Foreground="#38BDF8"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- 4. Test Pattern Panel -->
+                        <StackPanel x:Name="PanelLeftTestContent" Visibility="Collapsed">
+                            <Border Background="#1E293B" BorderBrush="#334155" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,10">
+                                <StackPanel>
+                                    <TextBlock Text="Test Deseni Seçin:" FontSize="11" Foreground="#94A3B8" Margin="0,0,0,4"/>
+                                    <Button Content="📋 Test Deseni Oluştur (Grid/Kalibrasyon)" Style="{StaticResource SecondaryBtnStyle}" Click="BtnLeftTestPattern_Click" Padding="10,6"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- Expander: Advanced Position/Zoom Controls -->
+                        <Expander Header="˅ Görüntü Ayarları (Zoom / Konum / Ölçekleme)" Foreground="#38BDF8" IsExpanded="True">
+                            <Border Background="#1E293B" BorderBrush="#334155" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,6,0,0">
+                                <StackPanel>
+                                    <!-- Scale Mode -->
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="80"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="Ölçekleme:" FontSize="11" Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                            <RadioButton x:Name="RadioLeftFit" Content="Fit" IsChecked="True" Checked="RadioLeftScale_Checked" Margin="0,0,10,0"/>
+                                            <RadioButton x:Name="RadioLeftFill" Content="Fill" Checked="RadioLeftScale_Checked" Margin="0,0,10,0"/>
+                                            <RadioButton x:Name="RadioLeftStretch" Content="Stretch" Checked="RadioLeftScale_Checked" Margin="0,0,10,0"/>
+                                            <RadioButton x:Name="RadioLeftCustom" Content="Custom" Checked="RadioLeftScale_Checked"/>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <!-- Zoom -->
+                                    <Grid Margin="0,0,0,6">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="80"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="50"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="Zoom:" FontSize="11" Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                        <Slider Grid.Column="1" x:Name="SliderLeftZoom" Minimum="10" Maximum="400" Value="100" ValueChanged="SliderLeftLayout_ValueChanged" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="2" x:Name="TxtLeftZoom" Text="100%" FontSize="10" FontWeight="Bold" Foreground="#38BDF8" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                    </Grid>
+
+                                    <!-- Offset X -->
+                                    <Grid Margin="0,0,0,6">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="80"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="50"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="Offset X:" FontSize="11" Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                        <Slider Grid.Column="1" x:Name="SliderLeftOffsetX" Minimum="-1000" Maximum="1000" Value="0" ValueChanged="SliderLeftLayout_ValueChanged" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="2" x:Name="TxtLeftOffsetX" Text="0 px" FontSize="10" FontWeight="Bold" Foreground="#38BDF8" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                    </Grid>
+
+                                    <!-- Offset Y -->
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="80"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="50"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="Offset Y:" FontSize="11" Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                        <Slider Grid.Column="1" x:Name="SliderLeftOffsetY" Minimum="-1000" Maximum="1000" Value="0" ValueChanged="SliderLeftLayout_ValueChanged" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="2" x:Name="TxtLeftOffsetY" Text="0 px" FontSize="10" FontWeight="Bold" Foreground="#38BDF8" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                    </Grid>
+
+                                    <Button Content="↻ Sıfırla" Style="{StaticResource SecondaryBtnStyle}" Click="BtnLeftResetLayout_Click" HorizontalAlignment="Right" Padding="8,3" FontSize="10"/>
+                                </StackPanel>
+                            </Border>
+                        </Expander>
+                    </StackPanel>
+                </ScrollViewer>
             </Border>
 
-            <!-- RIGHT REGION CARD -->
-            <Border Grid.Column="2" Background="{StaticResource CardBackground}" BorderBrush="{StaticResource CardBorder}" BorderThickness="1" CornerRadius="10" Padding="14">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-
-                    <!-- Header -->
-                    <Grid Grid.Row="0" Margin="0,0,0,8">
-                        <TextBlock Text="RIGHT LED GÖRSELİ (860×1720)" FontSize="15" FontWeight="Bold" Foreground="#38BDF8"/>
-                    </Grid>
-
-                    <!-- Drop Zone -->
-                    <Border Grid.Row="1" x:Name="DropZoneRight" Background="#0F172A" BorderBrush="#334155" BorderThickness="2" CornerRadius="6"
-                            AllowDrop="True" DragOver="DropZone_DragOver" Drop="DropZoneRight_Drop" Padding="10">
-                        <Grid>
-                            <StackPanel x:Name="PanelRightDropPrompt" VerticalAlignment="Center" HorizontalAlignment="Center">
-                                <TextBlock Text="🖼️" FontSize="28" HorizontalAlignment="Center" Margin="0,0,0,4"/>
-                                <TextBlock Text="Görseli Buraya Sürükleyin" FontWeight="Bold" FontSize="13" HorizontalAlignment="Center" Foreground="{StaticResource TextPrimary}"/>
-                                <TextBlock Text="PNG, JPG, WEBP" FontSize="11" HorizontalAlignment="Center" Foreground="{StaticResource TextSecondary}"/>
+            <!-- SAĞ LED PANEL -->
+            <Border Grid.Column="2" Background="#0F172A" BorderBrush="#1E293B" BorderThickness="1" CornerRadius="8" Padding="12">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <!-- Header -->
+                        <Grid Margin="0,0,0,10">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="SAĞ LED — Medya Kontrolü" FontSize="13" FontWeight="Bold" Foreground="#38BDF8"/>
+                                <Border Background="#10B981" CornerRadius="4" Padding="5,1" Margin="8,0,0,0">
+                                    <TextBlock Text="🟢 LIVE" FontSize="9" FontWeight="Bold" Foreground="White"/>
+                                </Border>
                             </StackPanel>
-                            <Image x:Name="ImgRightCardPreview" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center" Stretch="Uniform" MaxHeight="120"/>
                         </Grid>
-                    </Border>
 
-                    <!-- Scale Controls -->
-                    <StackPanel Grid.Row="2" Margin="0,8,0,8">
-                        <TextBlock x:Name="TxtRightMediaPath" Text="Seçili: (Henüz yok)" FontSize="11" Foreground="{StaticResource TextSecondary}" TextTrimming="CharacterEllipsis"/>
-                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                            <RadioButton x:Name="RadioRightFit" Content="Fit" GroupName="RightScale" IsChecked="True" Foreground="#F8FAFC" Margin="0,0,10,0" Checked="RadioRightScale_Checked"/>
-                            <RadioButton x:Name="RadioRightFill" Content="Fill" GroupName="RightScale" Foreground="#F8FAFC" Margin="0,0,10,0" Checked="RadioRightScale_Checked"/>
-                            <RadioButton x:Name="RadioRightStretch" Content="Stretch" GroupName="RightScale" Foreground="#F8FAFC" Checked="RadioRightScale_Checked"/>
+                        <!-- Source Type Tabs -->
+                        <UniformGrid Columns="4" Margin="0,0,0,10">
+                            <RadioButton x:Name="RadRightSourceImage" Content="📁 Dosya" Style="{StaticResource SourceTabBtnStyle}" IsChecked="True" Checked="SourceTab_Checked"/>
+                            <RadioButton x:Name="RadRightSourceVideo" Content="📹 Video" Style="{StaticResource SourceTabBtnStyle}" Checked="SourceTab_Checked"/>
+                            <RadioButton x:Name="RadRightSourceWeb" Content="🌐 Web Sitesi" Style="{StaticResource SourceTabBtnStyle}" Checked="SourceTab_Checked"/>
+                            <RadioButton x:Name="RadRightSourceTest" Content="📋 Test Deseni" Style="{StaticResource SourceTabBtnStyle}" Checked="SourceTab_Checked"/>
+                        </UniformGrid>
+
+                        <!-- Active Source Content Area -->
+                        <!-- 1. Dosya (Image) Panel -->
+                        <StackPanel x:Name="PanelRightImageContent" Visibility="Visible">
+                            <Border Background="#1E293B" BorderBrush="#334155" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,10">
+                                <Grid x:Name="DropZoneRight" AllowDrop="True" DragOver="DropZone_DragOver" Drop="DropZoneRight_Drop">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Thumbnail -->
+                                    <Border Grid.Column="0" Height="70" Background="#0F172A" CornerRadius="4" ClipToBounds="True">
+                                        <Grid>
+                                            <Canvas x:Name="CanvasRightPreviewViewport">
+                                                <Image x:Name="ImgRightPreview" Stretch="Uniform"/>
+                                            </Canvas>
+                                            <StackPanel x:Name="PanelRightDropPrompt" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                <TextBlock Text="📁" FontSize="16" HorizontalAlignment="Center"/>
+                                                <TextBlock Text="Sürükle" FontSize="9" Foreground="#94A3B8" HorizontalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- Details & Action Buttons -->
+                                    <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+                                        <TextBlock x:Name="TxtRightMediaPath" Text="Görsel Seçilmedi" FontSize="12" FontWeight="Bold" Foreground="#F9FAFC" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Text="1920 × 1080 | Image File" FontSize="10" Foreground="#94A3B8" Margin="0,2,0,8"/>
+
+                                        <StackPanel Orientation="Horizontal">
+                                            <Button Content="📁 Dosya Seç" Style="{StaticResource SecondaryBtnStyle}" Click="BtnRightChooseMedia_Click" Padding="8,4" FontSize="11" Margin="0,0,6,0"/>
+                                            <Button x:Name="BtnRightClear" Content="🗑️ Temizle" Style="{StaticResource SecondaryBtnStyle}" Click="BtnRightChooseMedia_Click" Padding="8,4" FontSize="11"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
                         </StackPanel>
-                    </StackPanel>
 
-                    <!-- Blackout Button -->
-                    <Button Grid.Row="3" x:Name="BtnRightBlack" Content="⚫ RIGHT Blackout" Style="{StaticResource SecondaryBtnStyle}" Click="BtnRightBlack_Click"/>
-                </Grid>
+                        <!-- 2. Video Panel -->
+                        <StackPanel x:Name="PanelRightVideoContent" Visibility="Collapsed">
+                            <Border Background="#1E293B" BorderBrush="#334155" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,10">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="80"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Height="55" Background="#0F172A" CornerRadius="4" ClipToBounds="True">
+                                            <MediaElement x:Name="MediaRightPreviewVideo" LoadedBehavior="Manual" UnloadedBehavior="Manual" MediaOpened="MediaRightPreviewVideo_MediaOpened"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock Text="turkiye-tanitim.mp4" FontSize="12" FontWeight="Bold" Foreground="#F9FAFC"/>
+                                            <TextBlock Text="1920 × 1080 | 45.2 MB | MP4" FontSize="10" Foreground="#94A3B8"/>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <!-- Video Scrubber & Controls -->
+                                    <Grid x:Name="PanelRightVideoControls">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Button Content="▶" Style="{StaticResource SecondaryBtnStyle}" Click="BtnRightPlay_Click" Padding="8,3" Margin="0,0,4,0"/>
+                                        <Button Grid.Column="1" Content="⏹" Style="{StaticResource SecondaryBtnStyle}" Click="BtnRightStopVideo_Click" Padding="8,3" Margin="0,0,6,0"/>
+                                        <Slider Grid.Column="2" x:Name="SliderRightVideoPosition" VerticalAlignment="Center" ValueChanged="SliderRightVideoPosition_ValueChanged"/>
+                                        <CheckBox Grid.Column="3" x:Name="ChkRightMute" Content="🔊" VerticalAlignment="Center" Margin="6,0" Click="ChkRightMute_Click"/>
+                                        <Slider Grid.Column="4" Width="60" Value="100" VerticalAlignment="Center" ValueChanged="SliderRightVolume_ValueChanged"/>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- 3. Web Sitesi Panel -->
+                        <StackPanel x:Name="PanelRightWebContent" Visibility="Collapsed">
+                            <Border Background="#1E293B" BorderBrush="#334155" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,10">
+                                <StackPanel>
+                                    <TextBlock Text="Web Adresi (URL):" FontSize="11" Foreground="#94A3B8" Margin="0,0,0,4"/>
+                                    <Grid Margin="0,0,0,6">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox x:Name="TxtRightWebUrl" Text="https://canli.belediye.gov.tr" Padding="6,5"/>
+                                        <Button Grid.Column="1" Content="🌐 Git" Style="{StaticResource SecondaryBtnStyle}" Click="BtnRightWebGo_Click" Padding="10,5" Margin="6,0,0,0"/>
+                                    </Grid>
+                                    <TextBlock x:Name="TxtRightWebStatus" Text="Aktif Web Adresi: Gönderilmedi" FontSize="10" Foreground="#38BDF8"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- 4. Test Pattern Panel -->
+                        <StackPanel x:Name="PanelRightTestContent" Visibility="Collapsed">
+                            <Border Background="#1E293B" BorderBrush="#334155" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,10">
+                                <StackPanel>
+                                    <TextBlock Text="Test Deseni Seçin:" FontSize="11" Foreground="#94A3B8" Margin="0,0,0,4"/>
+                                    <Button Content="📋 Test Deseni Oluştur (Grid/Kalibrasyon)" Style="{StaticResource SecondaryBtnStyle}" Click="BtnRightTestPattern_Click" Padding="10,6"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- Expander: Advanced Position/Zoom Controls -->
+                        <Expander Header="˅ Görüntü Ayarları (Zoom / Konum / Ölçekleme)" Foreground="#38BDF8" IsExpanded="True">
+                            <Border Background="#1E293B" BorderBrush="#334155" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,6,0,0">
+                                <StackPanel>
+                                    <!-- Scale Mode -->
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="80"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="Ölçekleme:" FontSize="11" Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                            <RadioButton x:Name="RadioRightFit" Content="Fit" IsChecked="True" Checked="RadioRightScale_Checked" Margin="0,0,10,0"/>
+                                            <RadioButton x:Name="RadioRightFill" Content="Fill" Checked="RadioRightScale_Checked" Margin="0,0,10,0"/>
+                                            <RadioButton x:Name="RadioRightStretch" Content="Stretch" Checked="RadioRightScale_Checked" Margin="0,0,10,0"/>
+                                            <RadioButton x:Name="RadioRightCustom" Content="Custom" Checked="RadioRightScale_Checked"/>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <!-- Zoom -->
+                                    <Grid Margin="0,0,0,6">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="80"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="50"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="Zoom:" FontSize="11" Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                        <Slider Grid.Column="1" x:Name="SliderRightZoom" Minimum="10" Maximum="400" Value="100" ValueChanged="SliderRightLayout_ValueChanged" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="2" x:Name="TxtRightZoom" Text="100%" FontSize="10" FontWeight="Bold" Foreground="#38BDF8" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                    </Grid>
+
+                                    <!-- Offset X -->
+                                    <Grid Margin="0,0,0,6">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="80"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="50"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="Offset X:" FontSize="11" Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                        <Slider Grid.Column="1" x:Name="SliderRightOffsetX" Minimum="-1000" Maximum="1000" Value="0" ValueChanged="SliderRightLayout_ValueChanged" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="2" x:Name="TxtRightOffsetX" Text="0 px" FontSize="10" FontWeight="Bold" Foreground="#38BDF8" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                    </Grid>
+
+                                    <!-- Offset Y -->
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="80"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="50"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="Offset Y:" FontSize="11" Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                        <Slider Grid.Column="1" x:Name="SliderRightOffsetY" Minimum="-1000" Maximum="1000" Value="0" ValueChanged="SliderRightLayout_ValueChanged" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="2" x:Name="TxtRightOffsetY" Text="0 px" FontSize="10" FontWeight="Bold" Foreground="#38BDF8" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                    </Grid>
+
+                                    <Button Content="↻ Sıfırla" Style="{StaticResource SecondaryBtnStyle}" Click="BtnRightResetLayout_Click" HorizontalAlignment="Right" Padding="8,3" FontSize="10"/>
+                                </StackPanel>
+                            </Border>
+                        </Expander>
+                    </StackPanel>
+                </ScrollViewer>
             </Border>
         </Grid>
 
-        <!-- 5. FOOTER STATUS BAR -->
-        <Border Grid.Row="5" Background="{StaticResource CardBackground}" CornerRadius="6" Padding="10,6">
+        <!-- 4. FOOTER BAR -->
+        <Border Grid.Row="4" Background="#0F172A" BorderBrush="#1E293B" BorderThickness="1" CornerRadius="6" Padding="10,6">
             <Grid>
-                <TextBlock x:Name="TxtGlobalStatus" Text="Sistem Hazır. Display 2 (Sunum) ve Display 3 (Master Output) seçimlerini yapın." FontSize="11" Foreground="{StaticResource TextSecondary}"/>
-                <TextBlock Text="RejiDisplay v0.3 Experimental" HorizontalAlignment="Right" FontSize="11" Foreground="#64748B"/>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Venue Presets -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="VENUE PRESET: " FontSize="11" FontWeight="Bold" Foreground="#94A3B8" VerticalAlignment="Center"/>
+                    <ComboBox x:Name="CmbVenuePresets" Width="200" SelectionChanged="CmbVenuePresets_SelectionChanged" Margin="0,0,6,0"/>
+                    <Button Content="💾 Kaydet" Style="{StaticResource SecondaryBtnStyle}" Padding="8,3" FontSize="10" Margin="0,0,4,0"/>
+                    <Button Content="⚙️ Yönet" Style="{StaticResource SecondaryBtnStyle}" Click="BtnOpenSettings_Click" Padding="8,3" FontSize="10"/>
+                </StackPanel>
+
+                <!-- Display Info Bar -->
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <TextBlock Text="EKRAN AYARLARI: " FontSize="11" FontWeight="Bold" Foreground="#94A3B8"/>
+                        <TextBlock Text="🖥️ Kontrol: Ekran 1  |  Sunum: Ekran 2  |  Master: Ekran 3" FontSize="11" Foreground="#38BDF8"/>
+                    </StackPanel>
+                    <TextBlock x:Name="TxtGlobalStatus" Text="Sistem Hazır." FontSize="10" Foreground="#10B981" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                </StackPanel>
+
+                <!-- Advanced Settings Button -->
+                <Button Grid.Column="2" Content="⚙️ Gelişmiş Ayarlar" Style="{StaticResource SecondaryBtnStyle}" Click="BtnOpenSettings_Click" Padding="10,4" FontSize="11"/>
             </Grid>
         </Border>
+
+        <!-- 5. SETTINGS MODAL DIALOG OVERLAY -->
+        <Grid x:Name="SettingsModal" Grid.RowSpan="5" Visibility="Collapsed" Background="#D9020617">
+            <Border Width="680" MaxHeight="750" Background="#1E293B" BorderBrush="#0EA5E9" BorderThickness="2" CornerRadius="10" Padding="20" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Modal Header -->
+                        <Grid Grid.Row="0" Margin="0,0,0,16">
+                            <TextBlock Text="⚙️ REJİDISPLAY SİSTEM VE EKRAN AYARLARI" FontSize="16" FontWeight="Bold" Foreground="#38BDF8"/>
+                            <Button Content="✕" Style="{StaticResource SecondaryBtnStyle}" Padding="8,2" FontSize="12" HorizontalAlignment="Right" Click="BtnCloseSettings_Click"/>
+                        </Grid>
+
+                        <!-- 1. Display Roles Assignment -->
+                        <Border Grid.Row="1" Background="#0F172A" BorderBrush="#334155" BorderThickness="1" CornerRadius="8" Padding="14" Margin="0,0,0,14">
+                            <StackPanel>
+                                <TextBlock Text="🖥️ EKRAN VE ROL ATAMALARI (DISPLAY ROLES)" FontSize="12" FontWeight="Bold" Foreground="#38BDF8" Margin="0,0,0,10"/>
+
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="180"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Display 1 (Kontrol Paneli):" FontSize="11" Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="1" x:Name="TxtControlDisplayLabel" Text="Birincil Ekran" FontSize="12" FontWeight="Bold" Foreground="#F9FAFC" VerticalAlignment="Center"/>
+                                </Grid>
+
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="180"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Display 2 (Sunum Ekranı):" FontSize="11" Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                    <ComboBox Grid.Column="1" x:Name="CmbPresentationSource" SelectionChanged="CmbPresentationSource_SelectionChanged"/>
+                                </Grid>
+
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="180"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Display 3 (Master LED Çıkışı):" FontSize="11" Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                    <ComboBox Grid.Column="1" x:Name="CmbMasterOutput" SelectionChanged="CmbMasterOutput_SelectionChanged"/>
+                                </Grid>
+
+                                <Button Content="🔍 EKRANLARI NUMARALANDIR (IDENTIFY DISPLAYS)" Style="{StaticResource SecondaryBtnStyle}" Padding="10,6" FontSize="11" HorizontalAlignment="Right" Click="BtnIdentify_Click"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 2. Middle Y-Offset Calibration & Venue Presets -->
+                        <Border Grid.Row="2" Background="#0F172A" BorderBrush="#334155" BorderThickness="1" CornerRadius="8" Padding="14" Margin="0,0,0,14">
+                            <StackPanel>
+                                <TextBlock Text="📐 MASTER CANVAS KALİBRASYONU VE PRESETLER" FontSize="12" FontWeight="Bold" Foreground="#38BDF8" Margin="0,0,0,10"/>
+
+                                <!-- Middle Y-Offset -->
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="180"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="110"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Middle Y-Offset Kalibrasyonu:" FontSize="11" Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                    <Slider Grid.Column="1" x:Name="SliderMiddleYOffset" Minimum="0" Maximum="344" Value="172" TickFrequency="1" IsSnapToTickEnabled="True" VerticalAlignment="Center" ValueChanged="SliderMiddleYOffset_ValueChanged"/>
+                                    <TextBlock Grid.Column="2" x:Name="TxtMiddleYOffset" Text="172 px (Ortalanmış)" FontSize="10" FontWeight="Bold" Foreground="#38BDF8" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                </Grid>
+
+                                <!-- Reserved Center -->
+                                <Grid Margin="0,0,0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="180"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Rezerve Center (Pasif):" FontSize="11" Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                    <ComboBox Grid.Column="1" x:Name="CmbReservedCenter" SelectionChanged="CmbReservedCenter_SelectionChanged"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 3. Developer & Testing Options -->
+                        <Border Grid.Row="3" Background="#0F172A" BorderBrush="#334155" BorderThickness="1" CornerRadius="8" Padding="14" Margin="0,0,0,16">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="🧪 SİMÜLASYON MODU (TESTING MODE)" FontSize="12" FontWeight="Bold" Foreground="#38BDF8"/>
+                                    <TextBlock Text="Tek ekranlı sistemlerde sanal 3 ekranlı LED yapısını simüle eder." FontSize="10" Foreground="#94A3B8"/>
+                                </StackPanel>
+                                <Button Grid.Column="1" x:Name="BtnToggleSimulation" Content="🧪 SİMÜLASYON MODU" Style="{StaticResource SecondaryBtnStyle}" Padding="10,6" FontSize="11" Click="BtnToggleSimulation_Click"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- Close Button -->
+                        <Button Grid.Row="4" Content="✓ AYARLARI KAYDET VE KAPAT" Style="{StaticResource PrimaryGreenBtnStyle}" Padding="16,10" FontSize="13" HorizontalAlignment="Center" Click="BtnCloseSettings_Click"/>
+                    </Grid>
+                </ScrollViewer>
+            </Border>
+        </Grid>
     </Grid>
 </Window>

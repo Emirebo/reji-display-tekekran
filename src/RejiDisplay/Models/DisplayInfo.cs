@@ -13,8 +13,9 @@ namespace RejiDisplay.Models
         public uint DpiX { get; set; } = 96;
         public uint DpiY { get; set; } = 96;
         public int DisplayIndex { get; set; }
+        public int RefreshRate { get; set; } = 60;
 
-        public string DisplayLabel => $"{FriendlyName}{(IsPrimary ? " [OPERATOR / PRIMARY]" : "")}";
+        public string DisplayLabel => $"{FriendlyName}{(RefreshRate > 0 ? $" @ {RefreshRate}Hz" : "")}{(IsPrimary ? " [OPERATOR / PRIMARY]" : "")}";
 
         public override string ToString() => DisplayLabel;
     }

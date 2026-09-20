@@ -35,6 +35,7 @@ namespace RejiDisplay.Services
                     var settings = JsonSerializer.Deserialize<AppSettings>(json);
                     if (settings != null)
                     {
+                        settings.Migrate();
                         return settings;
                     }
                 }

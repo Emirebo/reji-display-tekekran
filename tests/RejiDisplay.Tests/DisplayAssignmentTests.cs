@@ -77,5 +77,36 @@ namespace RejiDisplay.Tests
             Assert.NotNull(match);
             Assert.Equal(@"\\.\DISPLAY2", match.DeviceName);
         }
+
+        [Fact]
+        public void MasterOutput_AllowsBoth1080pAnd4KMonitors()
+        {
+            var primary = new DisplayInfo { DeviceName = @"\\.\DISPLAY1", IsPrimary = true, Width = 1920, Height = 1080 };
+            var monitor1080p = new DisplayInfo { DeviceName = @"\\.\DISPLAY2", IsPrimary = false, Width = 1920, Height = 1080 };
+            var monitor4k = new DisplayInfo { DeviceName = @"\\.\DISPLAY3", IsPrimary = false, Width = 3840, Height = 2160 };
+
+            var allDisplays = new List<DisplayInfo> { primary, monitor1080p, monitor4k };
+
+            var assignableMasterOutputs = _displayService.GetAssignableMasterOutputs(allDisplays, currentPresentationSource: null);
+
+            Assert.Equal(2, assignableMasterOutputs.Count);
+            Assert.Contains(monitor1080p, assignableMasterOutputs);
+            Assert.Contains(monitor4k, assignableMasterOutputs);
+            Assert.DoesNotContain(primary, assignableMasterOutputs);
+        }
+
+        [Fact]
+        public void DisplayInfo_DisplayLabel_FormatsRefreshRateCorrectly()
+        {
+            var info = new DisplayInfo
+            {
+                FriendlyName = "Ekran 3 (3840x2160)",
+                RefreshRate = 60,
+                IsPrimary = false
+            };
+
+            Assert.Contains("60Hz", info.DisplayLabel);
+            Assert.Contains("3840x2160", info.DisplayLabel);
+        }
     }
 }

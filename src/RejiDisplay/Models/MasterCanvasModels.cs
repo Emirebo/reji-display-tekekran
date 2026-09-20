@@ -60,16 +60,38 @@ namespace RejiDisplay.Models
     public class RegionContentState
     {
         public string? MediaPath { get; set; }
+        public string? WebUrl { get; set; }
+        public string? TestPatternName { get; set; }
+        public MediaSourceType MediaType { get; set; } = MediaSourceType.Image;
         public ScaleMode ScaleMode { get; set; } = ScaleMode.Fit;
+        public ImageLayoutState Layout { get; set; } = new();
+        public OutputCalibration Calibration { get; set; } = new();
         public bool IsBlackout { get; set; }
+
+        // Video playback properties
+        public bool IsLooping { get; set; } = true;
+        public bool IsMuted { get; set; }
+        public double Volume { get; set; } = 1.0;
+        public double PositionSeconds { get; set; }
+        public bool IsPlaying { get; set; } = true;
 
         public RegionContentState Clone()
         {
             return new RegionContentState
             {
                 MediaPath = this.MediaPath,
+                WebUrl = this.WebUrl,
+                TestPatternName = this.TestPatternName,
+                MediaType = this.MediaType,
                 ScaleMode = this.ScaleMode,
-                IsBlackout = this.IsBlackout
+                Layout = this.Layout.Clone(),
+                Calibration = this.Calibration.Clone(),
+                IsBlackout = this.IsBlackout,
+                IsLooping = this.IsLooping,
+                IsMuted = this.IsMuted,
+                Volume = this.Volume,
+                PositionSeconds = this.PositionSeconds,
+                IsPlaying = this.IsPlaying
             };
         }
     }

@@ -1,27 +1,128 @@
 using System;
 using System.Collections.Generic;
 using System.Windows.Media.Imaging;
+using RejiDisplay.Helpers;
 using RejiDisplay.Models;
 
 namespace RejiDisplay.Services
 {
     public class OutputManager
     {
-        private MasterOutputWindow? _masterWindow;
-        private readonly Dictionary<string, OutputWindow> _legacyWindows = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, OutputWindow> _activeWindows = new(StringComparer.OrdinalIgnoreCase);
 
-        public bool IsMasterOutputActive => _masterWindow != null && _masterWindow.IsLoaded;
+        public bool IsOutputActive(string cardId)
+        {
+            return _activeWindows.ContainsKey(cardId) && _activeWindows[cardId].IsLoaded;
+        }
+
+        public DisplayInfo? GetActiveDisplay(string cardId)
+        {
+            if (_activeWindows.TryGetValue(cardId, out var win))
+            {
+                return win.TargetDisplay;
+            }
+            return null;
+        }
+
+        public void StartOutput(
+            string cardId,
+            DisplayInfo display,
+            OutputCalibration calibration,
+            ImageLayoutState liveAppliedLayout,
+            BitmapImage? imageBitmap,
+            bool isBlackout)
+        {
+            StopOutput(cardId);
+
+            var window = new OutputWindow(display);
+            _activeWindows[cardId] = window;
+
+            window.Closed += (s, e) =>
+            {
+                if (_activeWindows.TryGetValue(cardId, out var existing) && existing == window)
+                {
+                    _activeWindows.Remove(cardId);
+                }
+            };
+
+            window.Show();
+            window.RenderLiveAppliedState(calibration, liveAppliedLayout, imageBitmap, isBlackout);
+        }
+
+        public void UpdateLiveOutput(
+            string cardId,
+            OutputCalibration calibration,
+            ImageLayoutState liveAppliedLayout,
+            BitmapImage? imageBitmap,
+            bool isBlackout)
+        {
+            if (_activeWindows.TryGetValue(cardId, out var window))
+            {
+                window.RenderLiveAppliedState(calibration, liveAppliedLayout, imageBitmap, isBlackout);
+            }
+        }
+
+        public void StopOutput(string cardId)
+        {
+            if (_activeWindows.TryGetValue(cardId, out var window))
+            {
+                _activeWindows.Remove(cardId);
+                try
+                {
+                    window.Close();
+                }
+                catch
+                {
+                    // Ignore window close exceptions
+                }
+            }
+        }
+
+        // --- SINGLE MASTER OUTPUT LIFECYCLE ---
+        private MasterOutputWindow? _masterWindow;
+
+        public OutputLifecycleState MasterState { get; private set; } = OutputLifecycleState.Stopped;
+        public string? MasterError { get; private set; }
+
+        public bool IsMasterOutputActive => _masterWindow != null && _masterWindow.IsLoaded && MasterState == OutputLifecycleState.Running;
         public DisplayInfo? ActiveMasterDisplay => _masterWindow?.TargetDisplay;
 
-        public void StartMasterOutput(DisplayInfo display, MasterCanvasState state, BitmapImage? leftBmp, BitmapImage? rightBmp)
+        public bool StartMasterOutput(DisplayInfo display, MasterCanvasState state, BitmapImage? leftBmp, BitmapImage? rightBmp, bool isDiagnosticMode = false)
         {
             StopMasterOutput();
 
-            _masterWindow = new MasterOutputWindow(display);
-            _masterWindow.Closed += (s, e) => { _masterWindow = null; };
+            MasterState = OutputLifecycleState.Starting;
+            MasterError = null;
+            Logger.Log($"[OutputManager] Starting Master Output on display: {display.DisplayLabel} ({display.DeviceName})");
 
-            _masterWindow.Show();
-            _masterWindow.ApplyState(state, leftBmp, rightBmp);
+            try
+            {
+                _masterWindow = new MasterOutputWindow(display);
+                _masterWindow.IsDiagnosticMode = isDiagnosticMode;
+
+                _masterWindow.Closed += (s, e) =>
+                {
+                    _masterWindow = null;
+                    MasterState = OutputLifecycleState.Stopped;
+                    Logger.Log("[OutputManager] MasterOutputWindow closed.");
+                };
+
+                _masterWindow.Show();
+                _masterWindow.PositionOnDisplay(display);
+                _masterWindow.ApplyState(state, leftBmp, rightBmp);
+
+                MasterState = OutputLifecycleState.Running;
+                Logger.Log($"[OutputManager] Master Output successfully running on {display.DisplayLabel}");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                MasterState = OutputLifecycleState.Failed;
+                MasterError = ex.Message;
+                Logger.LogError("[OutputManager] Failed to start Master Output", ex);
+                StopMasterOutput();
+                return false;
+            }
         }
 
         public void StopMasterOutput()
@@ -34,11 +135,13 @@ namespace RejiDisplay.Services
                 {
                     win.Close();
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // Ignore window close exceptions
+                    Logger.LogError("[OutputManager] Exception closing MasterOutputWindow", ex);
                 }
             }
+            MasterState = OutputLifecycleState.Stopped;
+            Logger.Log("[OutputManager] Master Output stopped.");
         }
 
         public void ApplyMasterState(MasterCanvasState state, BitmapImage? leftBmp, BitmapImage? rightBmp)
@@ -46,6 +149,7 @@ namespace RejiDisplay.Services
             if (_masterWindow != null && _masterWindow.IsLoaded)
             {
                 _masterWindow.ApplyState(state, leftBmp, rightBmp);
+                Logger.Log("[OutputManager] Master state updated and applied.");
             }
         }
 
@@ -62,77 +166,25 @@ namespace RejiDisplay.Services
             if (_masterWindow != null && _masterWindow.IsLoaded)
             {
                 _masterWindow.SetMasterBlackout(isBlackout);
-            }
-        }
-
-        // --- Legacy v0.2 Support ---
-
-        public bool IsOutputActive(string cardId)
-        {
-            return _legacyWindows.ContainsKey(cardId) && _legacyWindows[cardId].IsLoaded;
-        }
-
-        public DisplayInfo? GetActiveDisplay(string cardId)
-        {
-            if (_legacyWindows.TryGetValue(cardId, out var win))
-            {
-                return win.TargetDisplay;
-            }
-            return null;
-        }
-
-        public void StartOutput(string cardId, DisplayInfo display, ScaleMode scaleMode, BitmapImage? imageBitmap, bool isBlackout)
-        {
-            StopOutput(cardId);
-            var window = new OutputWindow(display);
-            _legacyWindows[cardId] = window;
-            window.Closed += (s, e) => { _legacyWindows.Remove(cardId); };
-            window.Show();
-            if (imageBitmap != null) window.SetImage(imageBitmap, scaleMode);
-            else window.SetScaleMode(scaleMode);
-            window.SetBlackout(isBlackout);
-        }
-
-        public void StopOutput(string cardId)
-        {
-            if (_legacyWindows.TryGetValue(cardId, out var window))
-            {
-                _legacyWindows.Remove(cardId);
-                try { window.Close(); } catch { }
+                Logger.Log($"[OutputManager] Master Blackout set to: {isBlackout}");
             }
         }
 
         public void StopAllOutputs()
         {
             StopMasterOutput();
-            var cardIds = new List<string>(_legacyWindows.Keys);
+            var cardIds = new List<string>(_activeWindows.Keys);
             foreach (var id in cardIds)
             {
                 StopOutput(id);
             }
         }
 
-        public void UpdateScaleMode(string cardId, ScaleMode scaleMode)
-        {
-            if (_legacyWindows.TryGetValue(cardId, out var window))
-            {
-                window.SetScaleMode(scaleMode);
-            }
-        }
-
         public void UpdateBlackout(string cardId, bool isBlackout)
         {
-            if (_legacyWindows.TryGetValue(cardId, out var window))
+            if (_activeWindows.TryGetValue(cardId, out var window))
             {
                 window.SetBlackout(isBlackout);
-            }
-        }
-
-        public void UpdateMedia(string cardId, BitmapImage bitmap, ScaleMode scaleMode)
-        {
-            if (_legacyWindows.TryGetValue(cardId, out var window))
-            {
-                window.SetImage(bitmap, scaleMode);
             }
         }
     }

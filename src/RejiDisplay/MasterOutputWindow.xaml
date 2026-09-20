@@ -1,6 +1,7 @@
 <Window x:Class="RejiDisplay.MasterOutputWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         Title="RejiDisplay — Master LED Output (Display 3)"
         WindowStyle="None"
         ResizeMode="NoResize"
@@ -10,12 +11,14 @@
         WindowStartupLocation="Manual">
     <Grid Background="Black">
         <!-- Master Composition Viewbox: Maps 4301x1720 Logical Canvas onto Physical Display 3 -->
-        <Viewbox Stretch="Uniform">
+        <Viewbox x:Name="MasterViewbox" Stretch="Uniform">
             <Canvas Width="4301" Height="1720" Background="Black">
 
                 <!-- LEFT LED REGION (860 x 1720) -->
                 <Canvas Canvas.Left="0" Canvas.Top="0" Width="860" Height="1720" Background="Black" ClipToBounds="True">
                     <Image x:Name="LeftMediaImage" Width="860" Height="1720" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    <MediaElement x:Name="LeftVideoPlayer" Width="860" Height="1720" Stretch="Uniform" LoadedBehavior="Manual" UnloadedBehavior="Manual" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center" MediaEnded="LeftVideoPlayer_MediaEnded" />
+                    <wv2:WebView2 x:Name="LeftWebView" Width="860" Height="1720" Visibility="Collapsed" DefaultBackgroundColor="Black" />
                     <Grid x:Name="LeftBlackoutOverlay" Width="860" Height="1720" Background="Black" Visibility="Collapsed" />
                 </Canvas>
 
@@ -28,7 +31,24 @@
                 <!-- RIGHT LED REGION (860 x 1720) -->
                 <Canvas Canvas.Left="3441" Canvas.Top="0" Width="860" Height="1720" Background="Black" ClipToBounds="True">
                     <Image x:Name="RightMediaImage" Width="860" Height="1720" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    <MediaElement x:Name="RightVideoPlayer" Width="860" Height="1720" Stretch="Uniform" LoadedBehavior="Manual" UnloadedBehavior="Manual" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center" MediaEnded="RightVideoPlayer_MediaEnded" />
+                    <wv2:WebView2 x:Name="RightWebView" Width="860" Height="1720" Visibility="Collapsed" DefaultBackgroundColor="Black" />
                     <Grid x:Name="RightBlackoutOverlay" Width="860" Height="1720" Background="Black" Visibility="Collapsed" />
+                </Canvas>
+
+                <!-- DIAGNOSTIC RGB TEST PATTERN OVERLAY (LEFT=RED, MIDDLE=GREEN, RIGHT=BLUE) -->
+                <Canvas x:Name="DiagnosticOverlayCanvas" Width="4301" Height="1720" Visibility="Collapsed">
+                    <!-- Left: Red -->
+                    <Rectangle Canvas.Left="0" Canvas.Top="0" Width="860" Height="1720" Fill="#FF0000"/>
+                    <TextBlock Canvas.Left="200" Canvas.Top="800" Text="LEFT: RED (860×1720)" Foreground="White" FontSize="36" FontWeight="Bold"/>
+
+                    <!-- Middle: Green -->
+                    <Rectangle Canvas.Left="860" Canvas.Top="172" Width="2581" Height="1376" Fill="#00FF00"/>
+                    <TextBlock Canvas.Left="1600" Canvas.Top="800" Text="MIDDLE: GREEN (2581×1376 @ Y:172)" Foreground="Black" FontSize="42" FontWeight="Bold"/>
+
+                    <!-- Right: Blue -->
+                    <Rectangle Canvas.Left="3441" Canvas.Top="0" Width="860" Height="1720" Fill="#0000FF"/>
+                    <TextBlock Canvas.Left="3600" Canvas.Top="800" Text="RIGHT: BLUE (860×1720)" Foreground="White" FontSize="36" FontWeight="Bold"/>
                 </Canvas>
 
                 <!-- MASTER BLACKOUT OVERLAY -->

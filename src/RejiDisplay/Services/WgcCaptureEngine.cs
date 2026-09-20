@@ -193,6 +193,14 @@ namespace RejiDisplay.Services
                 _session.StartCapture();
 
                 IsInitialized = true;
+
+                var mi = new MONITORINFOEX();
+                mi.cbSize = Marshal.SizeOf(typeof(MONITORINFOEX));
+                GetMonitorInfo(hMonitor, ref mi);
+                int monW = mi.rcMonitor.Right - mi.rcMonitor.Left;
+                int monH = mi.rcMonitor.Bottom - mi.rcMonitor.Top;
+
+                Logger.Log($"[WGC_MONITOR_MATCH] TargetDeviceName='{targetDeviceName}' | Resolved HMONITOR=0x{hMonitor.ToString("X")} | Bounds=({mi.rcMonitor.Left},{mi.rcMonitor.Top},{monW}x{monH}) | WgcDisplayName='{_captureItem.DisplayName}' | WgcSize={Width}x{Height}");
                 Logger.Log($"[WgcCaptureEngine_INIT_SUCCESS] WGC Capture initialized for '{_captureItem.DisplayName}' ({Width}x{Height})");
             }
             catch (Exception ex)
@@ -316,17 +324,39 @@ namespace RejiDisplay.Services
                 using var surface = frame.Surface;
                 if (surface == null) return _currentBitmap;
 
-                IntPtr pSurfaceUnknown = IntPtr.Zero;
-                try { pSurfaceUnknown = Marshal.GetIUnknownForObject(surface); } catch (Exception exUnknown) { Logger.Log($"[WgcCaptureEngine] Marshal.GetIUnknownForObject failed: {exUnknown.Message}"); }
-                if (pSurfaceUnknown == IntPtr.Zero) return _currentBitmap;
+                IntPtr pNativeAbi = IntPtr.Zero;
+                if (surface is WinRT.IWinRTObject winrtObj && winrtObj.NativeObject != null)
+                {
+                    pNativeAbi = winrtObj.NativeObject.ThisPtr;
+                }
+                else
+                {
+                    try { pNativeAbi = Marshal.GetIUnknownForObject(surface); } catch { }
+                }
+
+                if (pNativeAbi == IntPtr.Zero)
+                {
+                    Logger.Log($"[FRAME_TRACE] Stage 3a FAILED: Native ABI pointer for surface is NULL (FrameId={frameId})");
+                    return _currentBitmap;
+                }
+
+                if (frameId <= 5)
+                {
+                    Logger.Log($"[FRAME_TRACE] Stage 3a (Native Surface Pointer Obtained): FrameId={frameId} | pNativeAbi=0x{pNativeAbi.ToString("X")}");
+                }
 
                 IntPtr pTexture2D = IntPtr.Zero;
                 try
                 {
                     Guid iidDxgiAccess = IID_IDirect3DDxgiInterfaceAccess;
-                    int hrQuery = Marshal.QueryInterface(pSurfaceUnknown, ref iidDxgiAccess, out IntPtr pDxgiAccess);
+                    int hrQuery = Marshal.QueryInterface(pNativeAbi, ref iidDxgiAccess, out IntPtr pDxgiAccess);
                     if (hrQuery == 0 && pDxgiAccess != IntPtr.Zero)
                     {
+                        if (frameId <= 5)
+                        {
+                            Logger.Log($"[FRAME_TRACE] Stage 3b (QueryInterface IDirect3DDxgiInterfaceAccess Succeeded): FrameId={frameId} | HRESULT=0x00000000 | pDxgiAccess=0x{pDxgiAccess.ToString("X")}");
+                        }
+
                         try
                         {
                             IntPtr vtable = Marshal.ReadIntPtr(pDxgiAccess);
@@ -335,9 +365,16 @@ namespace RejiDisplay.Services
 
                             Guid iidTexture2D = IID_ID3D11Texture2D;
                             int hrGet = getInterfaceFunc(pDxgiAccess, ref iidTexture2D, out pTexture2D);
-                            if (hrGet != 0)
+                            if (hrGet == 0 && pTexture2D != IntPtr.Zero)
                             {
-                                Logger.Log($"[WgcCaptureEngine] IDirect3DDxgiInterfaceAccess.GetInterface failed: HRESULT 0x{hrGet:X8}");
+                                if (frameId <= 5)
+                                {
+                                    Logger.Log($"[FRAME_TRACE] Stage 3c (GetInterface ID3D11Texture2D Succeeded): FrameId={frameId} | HRESULT=0x00000000 | pTexture2D=0x{pTexture2D.ToString("X")}");
+                                }
+                            }
+                            else
+                            {
+                                Logger.Log($"[FRAME_TRACE] Stage 3c FAILED: GetInterface(ID3D11Texture2D) failed: HRESULT=0x{hrGet:X8} (FrameId={frameId})");
                             }
                         }
                         finally
@@ -347,12 +384,12 @@ namespace RejiDisplay.Services
                     }
                     else
                     {
-                        Logger.Log($"[WgcCaptureEngine] QueryInterface(IDirect3DDxgiInterfaceAccess) failed: HRESULT 0x{hrQuery:X8}");
+                        Logger.Log($"[FRAME_TRACE] Stage 3b FAILED: QueryInterface(IDirect3DDxgiInterfaceAccess) failed: HRESULT=0x{hrQuery:X8} (FrameId={frameId})");
                     }
                 }
                 finally
                 {
-                    Marshal.Release(pSurfaceUnknown);
+                    Marshal.Release(pNativeAbi);
                 }
 
                 if (pTexture2D == IntPtr.Zero) return _currentBitmap;

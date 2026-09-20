@@ -75,6 +75,49 @@ namespace RejiDisplay
                 PopulateVenuePresets();
                 RefreshDisplaysAndUI();
                 RestoreSavedSettings();
+
+                // Startup Logging (Priority 2)
+                try
+                {
+                    string execPath = System.Reflection.Assembly.GetExecutingAssembly().Location;
+                    string ver = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "0.3.0";
+                    var dispList = _allDisplays.Select(d => $"{d.FriendlyName} [{d.DeviceName}] ({d.Width}x{d.Height}@{d.RefreshRate}Hz)").ToList();
+                    var gpuList = new List<string>();
+                    try
+                    {
+                        if (Vortice.DXGI.DXGI.CreateDXGIFactory1(out Vortice.DXGI.IDXGIFactory1? factory).Success && factory != null)
+                        {
+                            using (factory)
+                            {
+                                for (uint a = 0; factory.EnumAdapters1(a, out Vortice.DXGI.IDXGIAdapter1? adapter).Success; a++)
+                                {
+                                    if (adapter != null)
+                                    {
+                                        gpuList.Add($"Adapter {a}: {adapter.Description.Description}");
+                                        adapter.Dispose();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        gpuList.Add("DXGI Factory Enum Unavailable");
+                    }
+
+                    Logger.LogStartup(
+                        execPath,
+                        ver,
+                        "v0.3-master-output",
+                        dispList,
+                        _presentationSourceDisplay?.DeviceName,
+                        gpuList
+                    );
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError("Startup Logging Error", ex);
+                }
             }
             finally
             {
@@ -82,9 +125,40 @@ namespace RejiDisplay
                 _isInitializing = false;
             }
 
+            if (_presentationSourceDisplay != null)
+            {
+                _captureService.StartCapture(_presentationSourceDisplay);
+            }
+
             RenderDraftPreview("LEFT");
             RenderDraftPreview("RIGHT");
             UpdateMasterUIState();
+        }
+
+        private void BtnOpenLogFile_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                string logFile = Logger.LogFilePath;
+                if (System.IO.File.Exists(logFile))
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", $"/select,\"{logFile}\"") { UseShellExecute = true });
+                    if (TxtGlobalStatus != null) TxtGlobalStatus.Text = $"📋 Log dosyası açıldı: {logFile}";
+                }
+                else
+                {
+                    string dir = System.IO.Path.GetDirectoryName(logFile) ?? string.Empty;
+                    if (System.IO.Directory.Exists(dir))
+                    {
+                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", $"\"{dir}\"") { UseShellExecute = true });
+                        if (TxtGlobalStatus != null) TxtGlobalStatus.Text = $"📋 Log klasörü açıldı: {dir}";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("Open Log File Error", ex);
+            }
         }
 
         private void MainWindow_Unloaded(object sender, RoutedEventArgs e)
@@ -109,7 +183,22 @@ namespace RejiDisplay
                 if (ImgMiddleMasterPreview != null) ImgMiddleMasterPreview.Source = e.Frame;
                 string fpsStr = $"{e.Fps:F1}";
                 if (TxtCaptureFps != null) TxtCaptureFps.Text = fpsStr;
-                if (TxtLiveStatusFps != null) TxtLiveStatusFps.Text = fpsStr;
+
+                if (TxtHeaderCapture != null && DotHeaderCapture != null)
+                {
+                    if (e.CaptureMode.Contains("DXGI_GPU"))
+                    {
+                        TxtHeaderCapture.Text = "🟢 DXGI GPU";
+                        TxtHeaderCapture.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#10B981"));
+                        DotHeaderCapture.Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#10B981"));
+                    }
+                    else
+                    {
+                        TxtHeaderCapture.Text = "⚠️ WIN32_GDI";
+                        TxtHeaderCapture.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#F59E0B"));
+                        DotHeaderCapture.Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#F59E0B"));
+                    }
+                }
 
                 if (_outputManager.IsMasterOutputActive)
                 {
@@ -123,6 +212,12 @@ namespace RejiDisplay
             Dispatcher.Invoke(() =>
             {
                 if (TxtGlobalStatus != null) TxtGlobalStatus.Text = $"Sunum Yakalama Uyarısı: {err}";
+                if (TxtHeaderCapture != null && DotHeaderCapture != null)
+                {
+                    TxtHeaderCapture.Text = "❌ HATA";
+                    TxtHeaderCapture.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#EF4444"));
+                    DotHeaderCapture.Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#EF4444"));
+                }
             });
         }
 
@@ -142,13 +237,15 @@ namespace RejiDisplay
                 });
             }
 
-            var selected = _venuePresetService.GetPresetByName(_appSettings.SelectedVenuePresetName) ?? VenuePreset.NovaStarVX2000ProStandard;
-            foreach (ComboBoxItem item in CmbVenuePresets.Items)
+            if (!string.IsNullOrEmpty(_appSettings.SelectedVenuePresetName))
             {
-                if (item.Tag is VenuePreset vp && string.Equals(vp.Name, selected.Name, StringComparison.OrdinalIgnoreCase))
+                foreach (ComboBoxItem item in CmbVenuePresets.Items)
                 {
-                    CmbVenuePresets.SelectedItem = item;
-                    break;
+                    if (item.Tag is VenuePreset p && string.Equals(p.Name, _appSettings.SelectedVenuePresetName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        CmbVenuePresets.SelectedItem = item;
+                        break;
+                    }
                 }
             }
 
@@ -260,14 +357,33 @@ namespace RejiDisplay
             if (!string.IsNullOrEmpty(_appSettings.PresentationDeviceName) || !string.IsNullOrEmpty(_appSettings.PresentationDeviceId))
             {
                 var match = _displayService.FindMatchingDisplay(_allDisplays, _appSettings.PresentationDeviceName, _appSettings.PresentationDeviceId);
-                if (match != null && CmbPresentationSource != null) SelectComboItem(CmbPresentationSource, match);
+                if (match != null && CmbPresentationSource != null)
+                {
+                    _presentationSourceDisplay = match;
+                    SelectComboItem(CmbPresentationSource, match);
+                }
+            }
+
+            // Auto-select first assignable presentation source if none saved
+            if (_presentationSourceDisplay == null)
+            {
+                var assignable = _displayService.GetAssignablePresentationSources(_allDisplays, _masterOutputDisplay);
+                if (assignable.Count > 0)
+                {
+                    _presentationSourceDisplay = assignable[0];
+                    if (CmbPresentationSource != null) SelectComboItem(CmbPresentationSource, _presentationSourceDisplay);
+                }
             }
 
             // Restore Display 3 (Master Output)
             if (!string.IsNullOrEmpty(_appSettings.MasterOutputDeviceName) || !string.IsNullOrEmpty(_appSettings.MasterOutputDeviceId))
             {
                 var match = _displayService.FindMatchingDisplay(_allDisplays, _appSettings.MasterOutputDeviceName, _appSettings.MasterOutputDeviceId);
-                if (match != null && CmbMasterOutput != null) SelectComboItem(CmbMasterOutput, match);
+                if (match != null && CmbMasterOutput != null)
+                {
+                    _masterOutputDisplay = match;
+                    SelectComboItem(CmbMasterOutput, match);
+                }
             }
 
             // Restore Left Output
@@ -299,6 +415,21 @@ namespace RejiDisplay
                     LoadMediaForCard("RIGHT", _rightState.DraftLayout.MediaPath);
                 }
             }
+
+            // Priority 5: Default Website URL (https://uulive.ai.studio/?mode=projector)
+            string defaultWebUrl = "https://uulive.ai.studio/?mode=projector";
+
+            if (string.IsNullOrWhiteSpace(_leftState.WebUrl))
+            {
+                _leftState.WebUrl = defaultWebUrl;
+            }
+            if (TxtLeftWebUrl != null) TxtLeftWebUrl.Text = _leftState.WebUrl;
+
+            if (string.IsNullOrWhiteSpace(_rightState.WebUrl))
+            {
+                _rightState.WebUrl = defaultWebUrl;
+            }
+            if (TxtRightWebUrl != null) TxtRightWebUrl.Text = _rightState.WebUrl;
         }
 
         private void SelectComboItem(ComboBox combo, DisplayInfo? target)

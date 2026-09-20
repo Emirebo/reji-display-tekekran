@@ -152,28 +152,29 @@ namespace RejiDisplay.Services
             bool useDxgi = true;
             string fallbackReason = string.Empty;
 
+            Logger.Log($"[PresentationCapture] Starting capture loop for '{display.FriendlyName}' ({display.DeviceName})");
             try
             {
                 dxgiEngine = new DxgiCaptureEngine(display.DeviceName);
                 if (dxgiEngine.IsInitialized)
                 {
                     CurrentCaptureMode = "DXGI_GPU (60FPS)";
-                    Logger.Log($"[PresentationCapture] Active backend: DXGI GPU Capture ({display.Width}x{display.Height} @ {display.RefreshRate}Hz)");
+                    Logger.Log($"[BACKEND_TRANSITION] Active backend: DXGI_GPU ({display.Width}x{display.Height} @ {display.RefreshRate}Hz)");
                 }
                 else
                 {
                     useDxgi = false;
                     fallbackReason = dxgiEngine.InitError;
                     CurrentCaptureMode = "WIN32_GDI (Persistent DC 60FPS)";
-                    Logger.Log($"[PresentationCapture] Fallback to GDI: {fallbackReason}");
+                    Logger.Log($"[BACKEND_TRANSITION] Fallback to WIN32_GDI. Reason: {fallbackReason}");
                 }
             }
             catch (Exception ex)
             {
                 useDxgi = false;
-                fallbackReason = ex.Message;
+                fallbackReason = $"{ex.GetType().Name} - {ex.Message}";
                 CurrentCaptureMode = "WIN32_GDI (Persistent DC 60FPS)";
-                Logger.Log($"[PresentationCapture] Exception initializing DXGI, fallback to GDI: {ex.Message}");
+                Logger.Log($"[BACKEND_TRANSITION] Exception initializing DXGI, fallback to WIN32_GDI: {ex.Message}");
             }
 
             var frameTimer = Stopwatch.StartNew();
@@ -200,7 +201,7 @@ namespace RejiDisplay.Services
                                 useDxgi = false;
                                 fallbackReason = "DXGI device access lost or output reset.";
                                 CurrentCaptureMode = "WIN32_GDI (Persistent DC 60FPS)";
-                                Logger.Log($"[PresentationCapture] DXGI lost access, switching to GDI fallback.");
+                                Logger.Log($"[BACKEND_TRANSITION] DXGI access lost, falling back to WIN32_GDI.");
                                 dxgiEngine.Dispose();
                                 dxgiEngine = null;
                             }
@@ -248,10 +249,10 @@ namespace RejiDisplay.Services
 
                             if (_recentLatencies.Count > 0)
                             {
+                                _recentLatencies.Sort();
                                 AverageFrameLatencyMs = Math.Round(_recentLatencies.Average(), 2);
-                                var sorted = _recentLatencies.OrderBy(x => x).ToList();
-                                int p95Index = (int)Math.Ceiling(0.95 * sorted.Count) - 1;
-                                P95FrameLatencyMs = Math.Round(sorted[Math.Clamp(p95Index, 0, sorted.Count - 1)], 2);
+                                int p95Index = (int)Math.Ceiling(0.95 * _recentLatencies.Count) - 1;
+                                P95FrameLatencyMs = Math.Round(_recentLatencies[Math.Max(0, p95Index)], 2);
                             }
                         }
 
@@ -301,7 +302,7 @@ namespace RejiDisplay.Services
                                 var dispatcher = Application.Current?.Dispatcher;
                                 if (dispatcher != null)
                                 {
-                                    dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Render, new Action(() =>
+                                    _ = dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Render, new Action(() =>
                                     {
                                         try
                                         {

@@ -32,9 +32,23 @@ namespace RejiDisplay.Helpers
             }
         }
 
+        public static void LogStartup(string executablePath, string version, string? gitCommit, List<string> displays, string? presentationDisplay, List<string> gpus)
+        {
+            Log($"==================================================");
+            Log($"[STARTUP] RejiDisplay v0.3 Started");
+            Log($"[STARTUP] Executable: {executablePath}");
+            Log($"[STARTUP] Version: {version}");
+            Log($"[STARTUP] Git Commit: {gitCommit ?? "N/A"}");
+            Log($"[STARTUP] Log File Path: {LogFilePath}");
+            Log($"[STARTUP] Physical Displays ({displays.Count}): {string.Join(" | ", displays)}");
+            Log($"[STARTUP] Selected Presentation Source: {presentationDisplay ?? "NONE"}");
+            Log($"[STARTUP] GPU Adapters ({gpus.Count}): {string.Join(" | ", gpus)}");
+            Log($"==================================================");
+        }
+
         public static void LogError(string context, Exception ex)
         {
-            Log($"[ERROR] {context}: {ex.Message}{Environment.NewLine}StackTrace: {ex.StackTrace}");
+            Log($"[ERROR] {context}: {ex.GetType().Name} - {ex.Message}{Environment.NewLine}StackTrace: {ex.StackTrace}");
         }
     }
 }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using RejiDisplay.Models;
 using RejiDisplay.Services;
+using Vortice.DXGI;
 using Xunit;
 
 namespace RejiDisplay.Tests
@@ -36,7 +37,7 @@ namespace RejiDisplay.Tests
             service.StartCapture(display);
             Assert.True(service.IsCapturing);
 
-            System.Threading.Thread.Sleep(50); // Give background task time to set mode
+            System.Threading.Thread.Sleep(150); // Give background task time to set mode
             Assert.NotEqual("IDLE", service.CurrentCaptureMode);
 
             service.StopCapture();
@@ -84,6 +85,45 @@ namespace RejiDisplay.Tests
             Assert.Equal(1376, region.Height);
             Assert.Equal(4301, MasterCanvasGeometry.CanvasWidth);
             Assert.Equal(1720, MasterCanvasGeometry.CanvasHeight);
+        }
+
+        [Fact]
+        public void DxgiCaptureEngine_PhysicalHardwareDisplay_HandlesInitializationSafely()
+        {
+            using var factory = DXGI.CreateDXGIFactory1<IDXGIFactory1>();
+            if (factory == null) return;
+
+            var displays = new List<string>();
+            for (uint a = 0; factory.EnumAdapters1(a, out IDXGIAdapter1? adapter).Success; a++)
+            {
+                if (adapter == null) continue;
+                for (uint o = 0; adapter.EnumOutputs(o, out IDXGIOutput? output).Success; o++)
+                {
+                    if (output != null)
+                    {
+                        displays.Add(output.Description.DeviceName);
+                        output.Dispose();
+                    }
+                }
+                adapter.Dispose();
+            }
+
+            Assert.NotEmpty(displays);
+
+            foreach (var display in displays)
+            {
+                using var dxgi = new DxgiCaptureEngine(display);
+                if (dxgi.IsInitialized)
+                {
+                    Assert.Empty(dxgi.InitError);
+                    var frame = dxgi.CaptureFrame(out bool frameChanged, out double acqMs, out double readMs);
+                    Assert.True(dxgi.IsInitialized, $"DXGI lost initialization after frame capture call on '{display}'");
+                }
+                else
+                {
+                    Assert.False(string.IsNullOrEmpty(dxgi.InitError), $"InitError should explain failure for '{display}'");
+                }
+            }
         }
 
         [Fact]

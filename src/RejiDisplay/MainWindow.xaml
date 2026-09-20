@@ -69,7 +69,8 @@
                     <TextBlock x:Name="TxtCaptureFps" Text="--" FontSize="14" FontWeight="Bold" Foreground="#38BDF8" VerticalAlignment="Center"/>
                 </StackPanel>
 
-                <!-- Settings Button -->
+                <!-- Settings & Log Buttons -->
+                <Button x:Name="BtnOpenLogFile" Content="📋 LOG" Style="{StaticResource SecondaryBtnStyle}" Click="BtnOpenLogFile_Click" Padding="10,6" Margin="0,0,6,0" ToolTip="Diagnostics Log dosyasını aç"/>
                 <Button x:Name="BtnOpenSettings" Content="⚙️ AYARLAR" Style="{StaticResource SecondaryBtnStyle}" Click="BtnOpenSettings_Click" Padding="12,6"/>
             </StackPanel>
         </Grid>
@@ -329,7 +330,7 @@
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBox x:Name="TxtLeftWebUrl" Text="https://canli.belediye.gov.tr" Padding="6,5"/>
+                                        <TextBox x:Name="TxtLeftWebUrl" Text="https://uulive.ai.studio/?mode=projector" Padding="6,5"/>
                                         <Button Grid.Column="1" Content="🌐 Git" Style="{StaticResource SecondaryBtnStyle}" Click="BtnLeftWebGo_Click" Padding="10,5" Margin="6,0,0,0"/>
                                     </Grid>
                                     <TextBlock x:Name="TxtLeftWebStatus" Text="Aktif Web Adresi: Gönderilmedi" FontSize="10" Foreground="#38BDF8"/>
@@ -516,7 +517,7 @@
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBox x:Name="TxtRightWebUrl" Text="https://canli.belediye.gov.tr" Padding="6,5"/>
+                                        <TextBox x:Name="TxtRightWebUrl" Text="https://uulive.ai.studio/?mode=projector" Padding="6,5"/>
                                         <Button Grid.Column="1" Content="🌐 Git" Style="{StaticResource SecondaryBtnStyle}" Click="BtnRightWebGo_Click" Padding="10,5" Margin="6,0,0,0"/>
                                     </Grid>
                                     <TextBlock x:Name="TxtRightWebStatus" Text="Aktif Web Adresi: Gönderilmedi" FontSize="10" Foreground="#38BDF8"/>
